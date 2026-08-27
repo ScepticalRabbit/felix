@@ -1,3 +1,11 @@
+# ==============================================================================
+# Felix: A virtual sensor laboratory
+#
+# Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
+# Licensed under the MIT License (see LICENSE file for details)
+#
+# Authors: scepticalrabbit (Lloyd Fletcher)
+# ==============================================================================
 import numpy as np
 import pyvale.sensorsim as py_sens
 import pyvale.verif.analyticsimdatafactory as analytic

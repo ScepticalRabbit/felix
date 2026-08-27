@@ -1,4 +1,11 @@
-//! By convention, root.zig is the root source file when making a package.
+// --------------------------------------------------------------------------------------
+// Felix: A virtual sensor laboratory
+//
+// Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
+// Licensed under the MIT License (see LICENSE file for details)
+//
+// Authors: scepticalrabbit (Lloyd Fletcher)
+// --------------------------------------------------------------------------------------
 const std = @import("std");
 const Io = std.Io;
 

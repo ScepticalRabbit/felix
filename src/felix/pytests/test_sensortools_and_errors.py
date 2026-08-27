@@ -1,7 +1,10 @@
 # ==============================================================================
-# Felix: A High Performance Sensor Simulation Core
-# License: MIT
+# Felix: A virtual sensor laboratory
+#
 # Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
+# Licensed under the MIT License (see LICENSE file for details)
+#
+# Authors: scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
 import numpy as np
 import pyvale.verif.analyticsimdatafactory as analytic
@@ -66,7 +69,7 @@ def test_calibration_inversion() -> None:
     cal_sim = ErrSysCalibration(
         assumed_calib=assumed_calib,
         truth_calib=truth_calib,
-        cal_range=(0.0, 10.0),
+        cal_range=(0.0, 20.0),
         n_cal_divs=10000,
     )
 

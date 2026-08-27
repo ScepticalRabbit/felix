@@ -1,7 +1,11 @@
 # ==============================================================================
-# felix: master benchmark runner orchestrating all benchmark cases
+# Felix: A virtual sensor laboratory
+#
+# Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
+# Licensed under the MIT License (see LICENSE file for details)
+#
+# Authors: scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
-
 import time
 from datetime import datetime
 

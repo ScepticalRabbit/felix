@@ -1,7 +1,11 @@
 # ==============================================================================
-# felix: benchmark configuration parameters
+# Felix: A virtual sensor laboratory
+#
+# Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
+# Licensed under the MIT License (see LICENSE file for details)
+#
+# Authors: scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
-
 from pathlib import Path
 
 # Sizing and workloads
@@ -19,7 +23,7 @@ DOMAIN_LENGTH_Y: float = 50.0
 DOMAIN_LENGTH_Z: float = 20.0
 
 # Timing and repetition parameters
-CALC_MEAS_CALLS: int = 1000
+CALC_MEAS_CALLS: int = 200
 RUNS_PER_CASE: int = 30
 WARMUP_RUNS: int = 2
 

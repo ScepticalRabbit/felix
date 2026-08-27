@@ -1,3 +1,11 @@
+# ==============================================================================
+# Felix: A virtual sensor laboratory
+#
+# Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
+# Licensed under the MIT License (see LICENSE file for details)
+#
+# Authors: scepticalrabbit (Lloyd Fletcher)
+# ==============================================================================
 from copy import deepcopy
 
 import numpy as np
@@ -32,6 +40,9 @@ class ErrIntegrator:
         self._errs_random = None
         self._errs_total = None
         self._sens_data_accumulated = deepcopy(sensor_data)
+
+    def get_sens_data_accumulated(self) -> SensorData:
+        return self._sens_data_accumulated
 
     def get_errs_systematic(self) -> np.ndarray | None:
         return self._errs_systematic

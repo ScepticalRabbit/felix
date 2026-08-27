@@ -1,7 +1,11 @@
 # ==============================================================================
-# felix: benchmark common mesh generation, harness, and io utilities
+# Felix: A virtual sensor laboratory
+#
+# Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
+# Licensed under the MIT License (see LICENSE file for details)
+#
+# Authors: scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
-
 import csv
 from datetime import datetime
 from pathlib import Path
@@ -284,8 +288,11 @@ def run_benchmark_case(
         field_pyvale = ps.FieldVector(sim_data, comp_keys, edim)
         field_felix = fs.FieldVector(sim_data, comp_keys, edim)
     elif field_kind == "tensor":
-        field_pyvale = ps.FieldTensor(sim_data, comp_keys, edim)
-        field_felix = fs.FieldTensor(sim_data, comp_keys, edim)
+        num_norm = 2 if spatial_dims == 2 else 3
+        norm_keys = comp_keys[:num_norm]
+        dev_keys = comp_keys[num_norm:]
+        field_pyvale = ps.FieldTensor(sim_data, norm_keys, dev_keys, edim)
+        field_felix = fs.FieldTensor(sim_data, norm_keys, dev_keys, edim)
     else:
         raise ValueError(f"Unknown field kind: {field_kind}")
 

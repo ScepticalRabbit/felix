@@ -1,3 +1,11 @@
+# ==============================================================================
+# Felix: A virtual sensor laboratory
+#
+# Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
+# Licensed under the MIT License (see LICENSE file for details)
+#
+# Authors: scepticalrabbit (Lloyd Fletcher)
+# ==============================================================================
 from dataclasses import dataclass
 from typing import TypeAlias
 
@@ -47,6 +55,9 @@ class FieldScalar(IField):
             raise ValueError(f"Unknown field component: {comp_key}")
         return 0
 
+    def get_visualiser(self) -> object:
+        return _create_visualiser(self._sim_data, self._spatial_dims)
+
     def sample_field(
         self,
         points: np.ndarray,
@@ -86,6 +97,9 @@ class FieldVector(IField):
 
     def get_component_index(self, comp_key: str) -> int:
         return self._comp_keys.index(comp_key)
+
+    def get_visualiser(self) -> object:
+        return _create_visualiser(self._sim_data, self._spatial_dims)
 
     def sample_field(
         self,
@@ -130,6 +144,9 @@ class FieldTensor(IField):
     def get_component_index(self, comp_key: str) -> int:
         return self.get_all_components().index(comp_key)
 
+    def get_visualiser(self) -> object:
+        return _create_visualiser(self._sim_data, self._spatial_dims)
+
     def sample_field(
         self,
         points: np.ndarray,
@@ -140,6 +157,22 @@ class FieldTensor(IField):
 
 
 FieldSpec: TypeAlias = FieldScalar | FieldVector | FieldTensor
+
+
+def _create_visualiser(sim_data: SimData, spatial_dims: EDim) -> object:
+    try:
+        import pyvale.sensorsim.enums as pe
+        from pyvale.sensorsim.fieldconverter import simdata_to_pyvista_vis
+
+        is_2d = (
+            spatial_dims == EDim.TWOD
+            or getattr(spatial_dims, "value", None) == 2
+            or spatial_dims == 2
+        )
+        py_dim = pe.EDim.TWOD if is_2d else pe.EDim.THREED
+        return simdata_to_pyvista_vis(sim_data, py_dim)
+    except Exception:
+        return None
 
 
 def _enforce_mesh(sim_data: SimData) -> SimData:

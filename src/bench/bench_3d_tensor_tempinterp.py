@@ -1,7 +1,11 @@
 # ==============================================================================
-# felix benchmark: 3d tensor field with temporal interpolation
+# Felix: A virtual sensor laboratory
+#
+# Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
+# Licensed under the MIT License (see LICENSE file for details)
+#
+# Authors: scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
-
 from bench.bench_common import run_benchmark_case
 
 CASE_NAME = "bench_3d_tensor_tempinterp"

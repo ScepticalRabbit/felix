@@ -1,3 +1,11 @@
+# ==============================================================================
+# Felix: A virtual sensor laboratory
+#
+# Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
+# Licensed under the MIT License (see LICENSE file for details)
+#
+# Authors: scepticalrabbit (Lloyd Fletcher)
+# ==============================================================================
 from pyvale.sensorsim.experimentsimio import load_exp_sim_data, save_exp_sim_data
 from pyvale.sensorsim.visualexpplotter import plot_exp_traces
 from pyvale.sensorsim.visualopts import (
