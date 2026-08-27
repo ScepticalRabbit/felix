@@ -45,7 +45,7 @@ sim_data: io.SimData = sens.scale_length_units(scale=1000.0,
 # 2. Build virtual sensor arrays
 # --------------------------------
 
-sens.print_dimensions(sim_data)
+sens.simtools.print_dimensions(sim_data)
 
 # Simulations is a 10mm cube
 sensor_positions = np.array(((5.0,0.0,5.0),     # cube x-z face

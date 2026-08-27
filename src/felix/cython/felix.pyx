@@ -953,3 +953,43 @@ def generate_quadrature_rule(
         raise RuntimeError(f"Felix quadrature generation failed: {err_msg}")
     return nodes[:count], weights[:count]
 
+
+def transform_tensor_invariants(
+    cnp.ndarray raw_tensor,
+    uint32_t inv_type,
+    int spatial_dims=2,
+):
+    cdef cnp.ndarray[double, ndim=3, mode="c"] tensor_c = np.ascontiguousarray(
+        raw_tensor, dtype=np.float64
+    )
+    cdef size_t num_points = tensor_c.shape[0]
+    cdef size_t num_comps = tensor_c.shape[1]
+    cdef size_t num_times = tensor_c.shape[2]
+
+    cdef cnp.ndarray[double, ndim=3, mode="c"] out_derived = np.empty(
+        (num_points, 1, num_times), dtype=np.float64
+    )
+
+    cdef int status = 0
+    if spatial_dims == 2 or num_comps == 3:
+        status = cf.felixTransformTensorArray2D(
+            <const double *>tensor_c.data,
+            num_points,
+            num_times,
+            inv_type,
+            <double *>out_derived.data,
+        )
+    else:
+        status = cf.felixTransformTensorArray3D(
+            <const double *>tensor_c.data,
+            num_points,
+            num_times,
+            inv_type,
+            <double *>out_derived.data,
+        )
+
+    if status != 0:
+        err_msg = get_last_error()
+        raise RuntimeError(f"Felix tensor transformation failed: {err_msg}")
+    return out_derived
+

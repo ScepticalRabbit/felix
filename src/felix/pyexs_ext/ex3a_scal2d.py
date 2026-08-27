@@ -44,7 +44,7 @@ sim_data: io.SimData = sens.scale_length_units(scale=1000.0,
 # 2. Build virtual sensor array
 # -----------------------------
 
-sim_dims: dict[str,tuple[float,float]] = sens.get_sim_dims(sim_data)
+sim_dims: dict[str,tuple[float,float]] = sens.simtools.get_sim_dims(sim_data)
 sens_pos: np.ndarray = sens.gen_pos_grid_inside(num_sensors=(3,2,1),
                                                 x_lims=sim_dims["x"],
                                                 y_lims=sim_dims["y"],
@@ -151,3 +151,4 @@ fig.savefig(output_path/"ext_ex3a_traces.png",dpi=300,bbox_inches="tight")
 #    :alt: Simulated sensor traces.
 #    :width: 600px
 #    :align: center
+

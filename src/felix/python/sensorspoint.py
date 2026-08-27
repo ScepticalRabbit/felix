@@ -278,6 +278,31 @@ class SensorsPoint:
     def _simulate(self, specs: list[dict] | None) -> tuple[np.ndarray, ...]:
         if self._sensor_data.positions is None:
             raise ValueError("SensorData.positions must be provided")
+        from felix.python.fieldtransforms import FieldTransformed
+
+        if isinstance(self._field, FieldTransformed):
+            truth = self._field.sample_field(
+                points=self._sensor_data.positions,
+                times=self._sensor_data.sample_times,
+                angles=self._sensor_data.angles,
+            )
+            if specs is None or len(specs) == 0:
+                return (truth, truth, None, None, None)
+            from felix.python.errgraph import err_chain_to_graph
+            graph = err_chain_to_graph(
+                self._error_integrator._err_chain,
+                truth.shape,
+                self._sensor_data,
+            )
+            tot = graph.calc_errors_from_graph(truth)
+            return (
+                truth,
+                truth + tot,
+                graph.get_errs_systematic(),
+                graph.get_errs_random(),
+                tot,
+            )
+
         return fc.sample_field_config(
             self._field,
             self._sensor_data.positions,

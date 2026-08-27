@@ -93,7 +93,7 @@ sim_data = sens.scale_length_units(
 #%%
 # 2. Build virtual sensor array
 # -----------------------------
-sim_dims = sens.get_sim_dims(sim_data)
+sim_dims = sens.simtools.get_sim_dims(sim_data)
 sens_pos = sens.gen_pos_grid_inside(
     num_sensors=(3, 2, 1),
     x_lims=sim_dims["x"],

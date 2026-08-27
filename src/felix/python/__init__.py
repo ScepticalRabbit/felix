@@ -78,6 +78,7 @@ from felix.python.spatialwindows import (
     SpatialWindowBox3D,
     SpatialWindowCircle,
     SpatialWindowCircle2D,
+    SpatialWindowDisk,
     SpatialWindowLine,
     SpatialWindowLine1D,
     SpatialWindowPoint,
@@ -111,6 +112,29 @@ from felix.python.integrationrules import (
     IntegrationSimpson,
     IntegrationTrapezoidal,
 )
+from felix.python.fieldtransforms import (
+    FieldMultiTransformed,
+    FieldTransformChain,
+    FieldTransformCustom,
+    FieldTransformDirectional,
+    FieldTransformFlux,
+    FieldTransformHydrostatic,
+    FieldTransformMagnitude,
+    FieldTransformPrincipal,
+    FieldTransformTraction,
+    FieldTransformTresca,
+    FieldTransformVonMises,
+    FieldTransformed,
+    IFieldTransform,
+)
+from felix.python.measurementdata import MeasurementData
+from felix.python.postprocessderived import (
+    IMeasurementProcessor,
+    ProcessRelativeDifference,
+    ProcessStiffness,
+    ProcessWork,
+)
+from felix.python.sensorlibrary import SensorLibrary
 from felix.python.sensortools import (
     gen_pos_cylinder,
     gen_pos_grid_boundary,
@@ -126,6 +150,8 @@ from felix.python.sensortools import (
     print_sim_data,
     scale_length_units,
 )
+from felix.python import sensortools
+from felix.python import sensortools as simtools
 from felix.python.visualisation import *
 
 

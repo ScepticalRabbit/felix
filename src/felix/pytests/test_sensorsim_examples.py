@@ -10,6 +10,10 @@ import runpy
 from pathlib import Path
 
 import pytest
+import pyvista as pv
+import matplotlib
+matplotlib.use("Agg")
+pv.OFF_SCREEN = True
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 BASIC_EXS_DIR = PROJECT_ROOT / "src" / "felix" / "pyexs_basic"
@@ -38,6 +42,18 @@ EXTENDED_EXAMPLES = [
     "ex4f_caliberrs_scal2d.py",
     "ex5a_expsim_thermmech2d.py",
     "ex5b_expsim_thermmech3d.py",
+    "ex6a_errgraph_parallel_branches.py",
+    "ex6b_errgraph_diamond_dependency.py",
+    "ex6c_errgraph_chain_conversion_and_inspection.py",
+    "ex7a_line_sensors_fbg_fiber.py",
+    "ex7b_area_sensors_foil_strain_gauge.py",
+    "ex7d_spatial_kernels_gaussian_psf.py",
+    "ex7e_temporal_windowing_shutter_lag.py",
+    "ex8a_derived_fields_stress_invariants.py",
+    "ex8c_flux_sensors_heat_and_flow.py",
+    "ex8d_differential_sensors_extensometer.py",
+    "ex8e_ray_sensors_lidar_and_pyrometer.py",
+    "ex8f_sensor_library_typical_transducers.py",
 ]
 
 

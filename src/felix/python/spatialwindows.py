@@ -104,15 +104,19 @@ class SpatialWindowPoint(ISpatialWindow):
 class SpatialWindowLine1D(ISpatialWindow):
     """One-dimensional line sensor window."""
 
-    __slots__ = ("_length", "_rule", "_kernel")
+    __slots__ = ("_length", "_axis", "_rule", "_kernel")
 
     def __init__(
         self,
         length: float = 1.0,
+        axis: tuple[float, float, float] | np.ndarray = (1.0, 0.0, 0.0),
         rule: IIntegrationRule | None = None,
         kernel: ISpatialKernel | None = None,
     ) -> None:
         self._length = float(length)
+        ax = np.asarray(axis, dtype=float)
+        norm = np.linalg.norm(ax)
+        self._axis = ax / (norm if norm != 0.0 else 1.0)
         self._rule = rule if rule is not None else IntegrationGaussLegendre(2)
         self._kernel = kernel if kernel is not None else SpatialKernelUniform()
 
@@ -133,12 +137,10 @@ class SpatialWindowLine1D(ISpatialWindow):
     ) -> tuple[np.ndarray, np.ndarray]:
         nodes_canon, weights_canon = self._rule.get_nodes_and_weights(dims=1)
         scale = 0.5 * self._length
-        local_x = nodes_canon[:, 0] * scale
-        local_pts = np.column_stack(
-            [local_x, np.zeros_like(local_x), np.zeros_like(local_x)]
-        )
+        local_xi = nodes_canon[:, 0] * scale
+        local_pts = local_xi[:, np.newaxis] * self._axis[np.newaxis, :]
 
-        sens_weights = self._kernel.eval_weights(local_pts[:, :1])
+        sens_weights = self._kernel.eval_weights(local_xi[:, np.newaxis])
         int_weights = weights_canon * scale * sens_weights
 
         if mode == EIntegrationMode.AVERAGE:
@@ -362,5 +364,6 @@ class SpatialWindowBox3D(ISpatialWindow):
 SpatialWindowLine = SpatialWindowLine1D
 SpatialWindowRectangle = SpatialWindowRect2D
 SpatialWindowCircle = SpatialWindowCircle2D
+SpatialWindowDisk = SpatialWindowCircle2D
 SpatialWindowSphere = SpatialWindowSphere3D
 SpatialWindowBox = SpatialWindowBox3D

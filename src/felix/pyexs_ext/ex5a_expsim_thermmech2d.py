@@ -55,7 +55,7 @@ for ss,kk in zip(sim_paths,sim_keys):
 # 2. Build virtual sensor arrays
 # ------------------------------
 
-sim_dims: dict[str,tuple[float,float]] = sens.get_sim_dims(sim_data)
+sim_dims: dict[str,tuple[float,float]] = sens.simtools.get_sim_dims(sim_data)
 
 sample_times = np.linspace(0.0,np.max(sim_data.time),50)
 

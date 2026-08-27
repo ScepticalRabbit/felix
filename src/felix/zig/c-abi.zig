@@ -17,6 +17,7 @@ const stats = @import("stats.zig");
 const err_graph = @import("err_graph.zig");
 const kernels = @import("kernels.zig");
 const quadrature = @import("quadrature.zig");
+const tensor_invariants = @import("tensor_invariants.zig");
 
 const F: type = f64;
 
@@ -467,5 +468,47 @@ pub export fn felixGenerateQuadNodesAndWeights(
         out_weights_ptr,
     );
     out_count_ptr[0] = count;
+    return 0;
+}
+
+pub export fn felixTransformTensorArray2D(
+    raw_tensor_ptr: [*c]const F,
+    num_points: usize,
+    num_times: usize,
+    inv_type: u32,
+    out_derived_ptr: [*c]F,
+) i32 {
+    if (raw_tensor_ptr == null or out_derived_ptr == null) {
+        setLastErrorSlice("Null pointer passed to felixTransformTensorArray2D");
+        return -1;
+    }
+    tensor_invariants.transformTensorArray2D(
+        raw_tensor_ptr,
+        num_points,
+        num_times,
+        inv_type,
+        out_derived_ptr,
+    );
+    return 0;
+}
+
+pub export fn felixTransformTensorArray3D(
+    raw_tensor_ptr: [*c]const F,
+    num_points: usize,
+    num_times: usize,
+    inv_type: u32,
+    out_derived_ptr: [*c]F,
+) i32 {
+    if (raw_tensor_ptr == null or out_derived_ptr == null) {
+        setLastErrorSlice("Null pointer passed to felixTransformTensorArray3D");
+        return -1;
+    }
+    tensor_invariants.transformTensorArray3D(
+        raw_tensor_ptr,
+        num_points,
+        num_times,
+        inv_type,
+        out_derived_ptr,
+    );
     return 0;
 }

@@ -7,7 +7,7 @@
 # Authors: scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
 from dataclasses import dataclass
-from typing import TypeAlias
+from typing import Sequence, TypeAlias
 
 import numpy as np
 from pyvale.dataio.meshconv import enforce_mesh_convention
@@ -120,13 +120,39 @@ class FieldTensor(IField):
     def __init__(
         self,
         sim_data: SimData,
-        norm_comp_keys: tuple[str, ...],
-        dev_comp_keys: tuple[str, ...],
-        spatial_dims: EDim,
+        norm_comp_keys: tuple[str, ...] | Sequence[str] | None = None,
+        dev_comp_keys: tuple[str, ...] | Sequence[str] | EDim | None = None,
+        spatial_dims: EDim | None = None,
+        comp_keys: tuple[str, ...] | Sequence[str] | None = None,
     ) -> None:
-        self._norm_comp_keys = norm_comp_keys
-        self._dev_comp_keys = dev_comp_keys
-        self._spatial_dims = spatial_dims
+        if comp_keys is not None:
+            norm_comp_keys = comp_keys
+        all_keys = tuple(norm_comp_keys) if norm_comp_keys is not None else ()
+        if isinstance(dev_comp_keys, EDim):
+            s_dims = dev_comp_keys
+            if s_dims == EDim.TWOD:
+                self._norm_comp_keys = all_keys[:2]
+                self._dev_comp_keys = all_keys[2:]
+            else:
+                self._norm_comp_keys = all_keys[:3]
+                self._dev_comp_keys = all_keys[3:]
+            self._spatial_dims = s_dims
+        elif spatial_dims is not None:
+            if dev_comp_keys is None:
+                if spatial_dims == EDim.TWOD:
+                    self._norm_comp_keys = all_keys[:2]
+                    self._dev_comp_keys = all_keys[2:]
+                else:
+                    self._norm_comp_keys = all_keys[:3]
+                    self._dev_comp_keys = all_keys[3:]
+            else:
+                self._norm_comp_keys = all_keys
+                self._dev_comp_keys = tuple(dev_comp_keys)
+            self._spatial_dims = spatial_dims
+        else:
+            self._norm_comp_keys = all_keys[:2]
+            self._dev_comp_keys = all_keys[2:]
+            self._spatial_dims = EDim.TWOD
         self.set_sim_data(sim_data)
 
     def set_sim_data(self, sim_data: SimData) -> None:

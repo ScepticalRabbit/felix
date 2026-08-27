@@ -246,6 +246,22 @@ int felixGenerateQuadNodesAndWeights(
     size_t         *out_count_ptr
 );
 
+int felixTransformTensorArray2D(
+    const double *raw_tensor_ptr,
+    size_t        num_points,
+    size_t        num_times,
+    uint32_t      inv_type,
+    double       *out_derived_ptr
+);
+
+int felixTransformTensorArray3D(
+    const double *raw_tensor_ptr,
+    size_t        num_points,
+    size_t        num_times,
+    uint32_t      inv_type,
+    double       *out_derived_ptr
+);
+
 #ifdef __cplusplus
 }
 #endif
