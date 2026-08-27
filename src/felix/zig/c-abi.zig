@@ -1,5 +1,5 @@
 // --------------------------------------------------------------------------------------
-// Felix: A High Performance Rasteriser for DIC UQ
+// Felix: A High Performance Sensor Simulation Core
 //
 // Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
 // Licensed under the MIT License (see LICENSE file for details)
@@ -7,11 +7,14 @@
 // Authors: scepticalrabbit (Lloyd Fletcher)
 // --------------------------------------------------------------------------------------
 const std = @import("std");
+const elements = @import("elements.zig");
+const mesh_interp = @import("mesh_interp.zig");
+const transforms = @import("transforms.zig");
+const errors = @import("errors.zig");
+const random = @import("random.zig");
+const sensor_sim = @import("sensor_sim.zig");
 
-const F = f64;
-
-const ndarray = @import("ndarray.zig");
-const vec = @import("vecstack.zig");
+const F: type = f64;
 
 // --------------------------------------------------------------------------------------
 // Public C ABI
@@ -66,42 +69,100 @@ pub export fn felixGetLastError(
 }
 
 // --------------------------------------------------------------------------------------
-// Helpers: safe pointer-to-slice conversion
-// --------------------------------------------------------------------------------------
-
-fn cConstSliceF64(
-    ptr: [*c]const f64,
-    len: usize,
-) ![]const f64 {
-    if (ptr == null and len > 0) {
-        return error.NullPointer;
-    }
-    return ptr[0..len];
-}
-
-fn cConstSliceUsize(
-    ptr: [*c]const usize,
-    len: usize,
-) ![]const usize {
-    if (ptr == null and len > 0) {
-        return error.NullPointer;
-    }
-    return ptr[0..len];
-}
-
-// --------------------------------------------------------------------------------------
 // Public Entry Points
 // --------------------------------------------------------------------------------------
 
-/// Receive a pyvale SensorData (positions, sample_times, spatial_dims) from
-/// Python and print a summary to stderr, proving the call path works.
-///
-/// positions      : flat row-major f64 array, shape (n_sensors, 3)
-/// positions_len  : total number of f64 elements  (= n_sensors * 3)
-/// sample_times   : flat f64 array, shape (n_times,); may be null/0-len
-/// sample_times_len: number of sample-time elements
-/// spatial_dims   : flat f64 array, shape (3,); may be null/0-len
-/// spatial_dims_len: number of spatial-dim elements (0 or 3)
+pub export fn felixSimulatePointSensors(
+    mesh_in_ptr: [*c]const sensor_sim.SimMeshInput,
+    sensor_in_ptr: [*c]const sensor_sim.SensorArrayInput,
+    error_specs_ptr: [*c]const errors.ErrorSpec,
+    num_errors: usize,
+    out_truth_ptr: [*c]F,
+    out_measurements_ptr: [*c]F,
+    out_errs_sys_ptr: [*c]F,
+    out_errs_rand_ptr: [*c]F,
+    out_errs_total_ptr: [*c]F,
+) i32 {
+    if (mesh_in_ptr == null or sensor_in_ptr == null or
+        out_truth_ptr == null or out_measurements_ptr == null)
+    {
+        setLastErrorSlice("Null pointer passed to felixSimulatePointSensors");
+        return -1;
+    }
+
+    sensor_sim.runSensorSimulation(
+        mesh_in_ptr,
+        sensor_in_ptr,
+        error_specs_ptr,
+        num_errors,
+        out_truth_ptr,
+        out_measurements_ptr,
+        out_errs_sys_ptr,
+        out_errs_rand_ptr,
+        out_errs_total_ptr,
+    );
+
+    return 0;
+}
+
+pub export fn felixTransformVectors2D(
+    rot_mat_22_ptr: [*c]const F,
+    vx_in_ptr: [*c]const F,
+    vy_in_ptr: [*c]const F,
+    num_vectors: usize,
+    out_vx_ptr: [*c]F,
+    out_vy_ptr: [*c]F,
+) void {
+    var r22: [4]F = undefined;
+    for (0..4) |ii| r22[ii] = rot_mat_22_ptr[ii];
+
+    for (0..num_vectors) |ii| {
+        var tx: F = undefined;
+        var ty: F = undefined;
+        transforms.transformVector2D(
+            &r22,
+            vx_in_ptr[ii],
+            vy_in_ptr[ii],
+            &tx,
+            &ty,
+        );
+        out_vx_ptr[ii] = tx;
+        out_vy_ptr[ii] = ty;
+    }
+}
+
+pub export fn felixTransformVectors3D(
+    rot_mat_33_ptr: [*c]const F,
+    vx_in_ptr: [*c]const F,
+    vy_in_ptr: [*c]const F,
+    vz_in_ptr: [*c]const F,
+    num_vectors: usize,
+    out_vx_ptr: [*c]F,
+    out_vy_ptr: [*c]F,
+    out_vz_ptr: [*c]F,
+) void {
+    var r33: [9]F = undefined;
+    for (0..9) |ii| r33[ii] = rot_mat_33_ptr[ii];
+
+    for (0..num_vectors) |ii| {
+        var tx: F = undefined;
+        var ty: F = undefined;
+        var tz: F = undefined;
+        transforms.transformVector3D(
+            &r33,
+            vx_in_ptr[ii],
+            vy_in_ptr[ii],
+            vz_in_ptr[ii],
+            &tx,
+            &ty,
+            &tz,
+        );
+        out_vx_ptr[ii] = tx;
+        out_vy_ptr[ii] = ty;
+        out_vz_ptr[ii] = tz;
+    }
+}
+
 pub export fn felixPrintSensorData(
     positions_ptr: [*c]const f64,
     positions_len: usize,
@@ -110,40 +171,19 @@ pub export fn felixPrintSensorData(
     spatial_dims_ptr: [*c]const f64,
     spatial_dims_len: usize,
 ) void {
-    const positions = cConstSliceF64(
-        positions_ptr,
-        positions_len,
-    ) catch {
-        std.debug.print(
-            "[Felix] ERROR: null positions pointer with non-zero length.\n",
-            .{},
-        );
-        return;
-    };
+    if (positions_ptr == null and positions_len > 0) return;
+    const positions = positions_ptr[0..positions_len];
 
-    const sample_times = cConstSliceF64(
-        sample_times_ptr,
-        sample_times_len,
-    ) catch {
-        std.debug.print(
-            "[Felix] ERROR: null sample_times pointer with non-zero length.\n",
-            .{},
-        );
-        return;
-    };
+    const sample_times = if (sample_times_ptr != null and sample_times_len > 0)
+        sample_times_ptr[0..sample_times_len]
+    else
+        &[_]f64{};
 
-    const spatial_dims = cConstSliceF64(
-        spatial_dims_ptr,
-        spatial_dims_len,
-    ) catch {
-        std.debug.print(
-            "[Felix] ERROR: null spatial_dims pointer with non-zero length.\n",
-            .{},
-        );
-        return;
-    };
+    const spatial_dims = if (spatial_dims_ptr != null and spatial_dims_len > 0)
+        spatial_dims_ptr[0..spatial_dims_len]
+    else
+        &[_]f64{};
 
-    // positions must be a multiple of 3 (one [x,y,z] triple per sensor)
     if (positions.len % 3 != 0) {
         std.debug.print(
             "[Felix] ERROR: positions length {d} is not divisible by 3.\n",
@@ -154,20 +194,10 @@ pub export fn felixPrintSensorData(
 
     const n_sensors: usize = positions.len / 3;
 
-    std.debug.print(
-        "\n[Felix] ---- SensorData ----\n",
-        .{},
-    );
-    std.debug.print(
-        "[Felix] n_sensors       : {d}\n",
-        .{n_sensors},
-    );
-    std.debug.print(
-        "[Felix] n_sample_times  : {d}\n",
-        .{sample_times.len},
-    );
+    std.debug.print("\n[Felix] ---- SensorData ----\n", .{});
+    std.debug.print("[Felix] n_sensors       : {d}\n", .{n_sensors});
+    std.debug.print("[Felix] n_sample_times  : {d}\n", .{sample_times.len});
 
-    // Print each sensor position
     var ii: usize = 0;
     while (ii < n_sensors) : (ii += 1) {
         const px = positions[ii * 3 + 0];
@@ -179,7 +209,6 @@ pub export fn felixPrintSensorData(
         );
     }
 
-    // Print sample times if provided
     if (sample_times.len > 0) {
         std.debug.print("[Felix] sample_times    :", .{});
         var jj: usize = 0;
@@ -187,23 +216,12 @@ pub export fn felixPrintSensorData(
             std.debug.print(" {d:.4}", .{sample_times[jj]});
         }
         std.debug.print("\n", .{});
-    } else {
-        std.debug.print(
-            "[Felix] sample_times    : (none – using sim time steps)\n",
-            .{},
-        );
     }
 
-    // Print spatial dims if provided
     if (spatial_dims.len == 3) {
         std.debug.print(
             "[Felix] spatial_dims    : ({d:.4}, {d:.4}, {d:.4})\n",
             .{ spatial_dims[0], spatial_dims[1], spatial_dims[2] },
-        );
-    } else {
-        std.debug.print(
-            "[Felix] spatial_dims    : (none)\n",
-            .{},
         );
     }
 

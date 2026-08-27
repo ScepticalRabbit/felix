@@ -18,22 +18,79 @@
 extern "C" {
 #endif
 
-/*
- * Copy the last error message into out_buf (null-terminated).
- * Returns the number of bytes written (excluding the null terminator).
- */
+typedef struct SimMeshInput {
+    const double *coords_ptr;
+    size_t        num_nodes;
+    const size_t *connect_ptr;
+    size_t        num_elements;
+    uint32_t      elem_type;
+    const double *nodal_fields_ptr;
+    size_t        num_components;
+    const double *sim_times_ptr;
+    size_t        num_sim_times;
+} SimMeshInput;
+
+typedef struct SensorArrayInput {
+    const double *positions_ptr;
+    size_t        num_sensors;
+    const double *sample_times_ptr;
+    size_t        num_sample_times;
+    const double *rot_matrices_ptr;
+    size_t        num_rot_matrices;
+    uint32_t      spatial_dims;
+    uint32_t      is_tensor;
+} SensorArrayInput;
+
+typedef struct ErrorSpec {
+    uint32_t      kind;
+    uint32_t      err_type;
+    uint32_t      err_dep;
+    uint32_t      dist_type;
+    double        param0;
+    double        param1;
+    double        param2;
+    uint64_t      seed;
+    uint32_t      has_seed;
+    const double *table_ptr;
+    size_t        table_rows;
+    const double *poly_coeffs_ptr;
+    size_t        poly_coeffs_len;
+} ErrorSpec;
+
 size_t felixGetLastError(uint8_t *out_buf, size_t out_buf_len);
 
-/*
- * Receive a pyvale SensorData from Python and print a summary to stderr.
- *
- *   positions_ptr      flat row-major f64 array, shape (n_sensors, 3)
- *   positions_len      total elements = n_sensors * 3
- *   sample_times_ptr   flat f64 array, shape (n_times,); may be NULL / 0
- *   sample_times_len   number of sample-time elements (0 if not supplied)
- *   spatial_dims_ptr   flat f64 array, shape (3,); may be NULL / 0
- *   spatial_dims_len   number of spatial-dim elements (0 or 3)
- */
+int felixSimulatePointSensors(
+    const SimMeshInput      *mesh_in_ptr,
+    const SensorArrayInput  *sensor_in_ptr,
+    const ErrorSpec         *error_specs_ptr,
+    size_t                   num_errors,
+    double                  *out_truth_ptr,
+    double                  *out_measurements_ptr,
+    double                  *out_errs_sys_ptr,
+    double                  *out_errs_rand_ptr,
+    double                  *out_errs_total_ptr
+);
+
+void felixTransformVectors2D(
+    const double *rot_mat_22_ptr,
+    const double *vx_in_ptr,
+    const double *vy_in_ptr,
+    size_t        num_vectors,
+    double       *out_vx_ptr,
+    double       *out_vy_ptr
+);
+
+void felixTransformVectors3D(
+    const double *rot_mat_33_ptr,
+    const double *vx_in_ptr,
+    const double *vy_in_ptr,
+    const double *vz_in_ptr,
+    size_t        num_vectors,
+    double       *out_vx_ptr,
+    double       *out_vy_ptr,
+    double       *out_vz_ptr
+);
+
 void felixPrintSensorData(
     const double *positions_ptr,
     size_t        positions_len,

@@ -336,7 +336,7 @@ ext_zig = Extension(
 # Cython extension that wraps the Zig library
 ext_cython = Extension(
     name="felix.cython.felix",
-    sources=["src/felix/cython/felix.py"],
+    sources=["src/felix/cython/felix.pyx"],
     include_dirs=H_DIRS,
     libraries=["c_felix"],
     library_dirs=[],            # populated dynamically by MultiBuildExt.run()

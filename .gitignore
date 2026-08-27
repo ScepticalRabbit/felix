@@ -26,6 +26,7 @@ debug/
 examples/
 pyout/
 refs/
+pyvale-out/
 
 # Don't commit large mesh, simulation or image files to the repo unless we have to
 *.ppm
@@ -36,6 +37,8 @@ refs/
 *.msh
 *.e
 *.log
+*.npy
+*.npz
 
 # Misc
 *.swp
