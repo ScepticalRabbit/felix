@@ -1,0 +1,29 @@
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "wheel",
+    "Cython>=3.0",
+    "numpy>=2.0",
+    "ziglang",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "felix"
+version = "2026.8.0"
+description = "Felix: A dependency-free Zig sensor simulation core for DIC UQ."
+authors = [
+    { name = "scepticalrabbit (Lloyd Fletcher)", email = "thescepticalrabbit@gmail.com" },
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0",
+    "pyvale",
+    "Cython>=3.0",
+    "ziglang",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

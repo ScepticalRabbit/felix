@@ -35,6 +35,7 @@ refs/
 *.csv
 *.msh
 *.e
+*.log
 
 # Misc
 *.swp
