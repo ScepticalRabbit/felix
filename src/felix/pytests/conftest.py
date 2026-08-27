@@ -9,8 +9,10 @@
 import os
 from collections.abc import Generator
 
+# Set up headless rendering BEFORE any imports
 os.environ["MPLBACKEND"] = "Agg"
 os.environ["PYVISTA_OFF_SCREEN"] = "true"
+os.environ["VTK_OPENGL_SOFTWARE_RENDERING"] = "1"
 
 import matplotlib
 import pytest
@@ -18,18 +20,23 @@ import pytest
 matplotlib.use("Agg", force=True)
 
 
-@pytest.fixture(autouse=True)
-def close_visualisation_windows() -> Generator[None, None, None]:
-    """Close figures and plotters created by each test, including failures."""
-    yield
-
-    import matplotlib.pyplot as plt
-
-    plt.close("all")
-
+def pytest_configure(config: pytest.Config) -> None:
+    """Configure pyvista for headless testing before any tests run."""
     try:
         import pyvista
-    except ImportError:
-        return
+        pyvista.OFF_SCREEN = True
+        pyvista.global_theme.off_screen = True
+        pyvista.global_theme.interactive = False
+    except Exception:
+        pass
 
-    pyvista.close_all()
+    # Register forked_pyvista plugin
+    config.pluginmanager.load_setuptools_entrypoints("pytest11")
+
+
+@pytest.fixture(autouse=True)
+def close_matplotlib_figures() -> Generator[None, None, None]:
+    """Close matplotlib figures after each test."""
+    yield
+    import matplotlib.pyplot as plt
+    plt.close("all")

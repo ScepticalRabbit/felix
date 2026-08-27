@@ -38,7 +38,7 @@ def test_sensors_line_scalar_linear_2d() -> None:
     window = fx.SpatialWindowLine(
         length=length,
         axis=(1.0, 0.0, 0.0),
-        integ_rule=fx.IntegrationGaussLegendre(order=2),
+        rule=fx.IntegrationGaussLegendre(order=2),
     )
 
     sensor_array = fx.SensorsSpatial(
@@ -82,7 +82,7 @@ def test_sensors_area_rectangle_scalar_quad_2d() -> None:
     window = fx.SpatialWindowRectangle(
         length_x=lx,
         length_y=ly,
-        integ_rule=fx.IntegrationGaussLegendre(order=3),
+        rule=fx.IntegrationGaussLegendre(order=3),
     )
 
     sensor_array = fx.SensorsSpatial(
@@ -124,7 +124,7 @@ def test_sensors_volume_box_scalar_linear_3d() -> None:
         length_x=lx,
         length_y=ly,
         length_z=lz,
-        integ_rule=fx.IntegrationGaussLegendre(order=2),
+        rule=fx.IntegrationGaussLegendre(order=2),
     )
 
     sensor_avg = fx.SensorsSpatial(
@@ -164,7 +164,8 @@ def test_sensors_temporal_window_transient_3d() -> None:
 
     # Time steps from 0.0 to 1.0
     center = np.array([[5.0, 3.75, 2.5]])
-    eval_times = np.array([0.5])
+    # TemporalWindowRectangular uses [t0 - duration, t0], so sample at t0=0.6
+    eval_times = np.array([0.6])
 
     sens_data = fx.SensorData(positions=center, sample_times=eval_times)
     field = fx.FieldScalar(
@@ -173,10 +174,11 @@ def test_sensors_temporal_window_transient_3d() -> None:
         spatial_dims=fx.EDim.THREED,
     )
 
-    # Temporal window centered at t=0.5 with duration 0.2 -> [0.4, 0.6]
-    temp_win = fx.TemporalWindowCentered(
+    # Temporal window [0.4, 0.6] -> TemporalWindowRectangular uses [t0 - duration, t0]
+    # so t0=0.6, duration=0.2 gives [0.4, 0.6]
+    temp_win = fx.TemporalWindowRectangular(
         duration=0.2,
-        integ_rule=fx.IntegrationGaussLegendre(order=3),
+        rule=fx.IntegrationGaussLegendre(order=3),
     )
 
     sensor = fx.SensorsSpatial(

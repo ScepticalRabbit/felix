@@ -292,12 +292,21 @@ def test_postprocess_dag_and_custom() -> None:
     times = np.linspace(0.0, 1.0, 100)
     u_vals = np.sin(2.0 * np.pi * times)[np.newaxis, np.newaxis, :]
     f_vals = (100.0 * np.sin(2.0 * np.pi * times))[np.newaxis, np.newaxis, :]
+    positions = np.zeros((1, 3))
 
     u_data = fx.MeasurementData(
-        values=u_vals, sample_times=times, components=("u",), units="mm"
+        values=u_vals,
+        sample_times=times,
+        positions=positions,
+        components=("u",),
+        units="mm",
     )
     f_data = fx.MeasurementData(
-        values=f_vals, sample_times=times, components=("f",), units="N"
+        values=f_vals,
+        sample_times=times,
+        positions=positions,
+        components=("f",),
+        units="N",
     )
 
     def custom_energy(
@@ -310,6 +319,7 @@ def test_postprocess_dag_and_custom() -> None:
         return fx.MeasurementData(
             values=e_arr,
             sample_times=inputs["disp_smooth"].sample_times,
+            positions=inputs["disp_smooth"].positions,
             components=("energy",),
             units="mJ",
         )

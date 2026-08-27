@@ -54,14 +54,14 @@ def test_von_mises_3d() -> None:
 
 def test_principal_2d() -> None:
     p_trans = fx.FieldTransformPrincipal(return_max_shear=True)
-    # Pure shear: s_xx=0, s_yy=0, s_xy=40 -> p1 = 40, p2 = -40, gamma_max = 80
+    # Pure shear: s_xx=0, s_yy=0, s_xy=40 -> p1 = 40, p2 = -40, tau_max = 40
     raw = np.array([[[0.0]], [[0.0]], [[40.0]]]).transpose(1, 0, 2)
     pts = np.zeros((1, 3))
     times = np.array([0.0])
     res = p_trans.transform(raw, pts, times)
     assert np.isclose(res[0, 0, 0], 40.0)
     assert np.isclose(res[0, 1, 0], -40.0)
-    assert np.isclose(res[0, 2, 0], 80.0)
+    assert np.isclose(res[0, 2, 0], 40.0)
 
 
 def test_principal_3d() -> None:

@@ -110,6 +110,7 @@ class SensorsPoint:
         self._field = field
         self._descriptor = descriptor
         self._error_integrator = None
+        self._err_graph = None
         self._truth = None
         self._measurements = None
 

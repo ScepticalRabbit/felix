@@ -229,7 +229,7 @@ class FieldTransformTraction(IFieldTransform):
 
             tx = s_xx * nx + s_xy * ny + s_xz * nz
             ty = s_xy * nx + s_yy * ny + s_yz * nz
-            tz = s_xz * nx + s_yz * ny + szz * nz
+            tz = s_xz * nx + s_yz * ny + s_zz * nz
         else:
             raise ValueError(
                 f"Traction transform expects 3 or 6 components, got {n_comps}."
