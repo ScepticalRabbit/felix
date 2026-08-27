@@ -1,3 +1,54 @@
+# Zig ignores
+*.so
+*.a
+*.o
+*.out
+build/
+file-out/
+.zig-cache/
+zig-out/
+out/
+bin/
+.*
+!.gitignore
+!.github/
+
+
+# Remove temp files and temporary test fail renders
+archive/
+temp-*/
+temp*/
+temp/
+plans/
+fails/
+fails*/
+debug/
+examples/
+pyout/
+refs/
+
+# Don't commit large mesh, simulation or image files to the repo unless we have to
+*.ppm
+*.bmp
+*.tiff
+*.fimg
+*.csv
+*.msh
+*.e
+
+# Misc
+*.swp
+.vscode/
+.venv/
+.antigravitycli/
+uv.lock
+
+# Windows :(
+*.dll
+*.pdb
+*.lib
+
+#-------------------------------------------------------------------------------
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
