@@ -1,129 +1,189 @@
-"""Pytest plugin to run pyvista tests in isolated subprocesses.
+"""Run VTK-sensitive pytest items in bounded, disposable processes."""
 
-This avoids VTK/PyVista memory leaks by executing marked test modules
-in separate Python processes.
-"""
+from __future__ import annotations
+
+import ctypes
 import os
+import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
+from _pytest.reports import TestReport
 
 
-PYVISTA_TEST_MODULES = {
+VTK_CHILD_ENV = "FELIX_PYTEST_VTK_CHILD"
+VTK_TEST_MODULES = {
+    "test_sensor_library.py",
     "test_sensors_ray.py",
     "test_sensors_spatial_ray.py",
-    "test_sensor_library.py",
     "test_sensorsim_examples.py",
 }
+DEFAULT_TIMEOUT_SECONDS = 120.0
+TERMINATE_GRACE_SECONDS = 5.0
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
-    parser.addoption(
-        "--no-fork-pyvista",
+    group = parser.getgroup("felix vtk isolation")
+    group.addoption(
+        "--no-isolate-vtk",
         action="store_true",
         default=False,
-        help="Disable forking for pyvista tests (run in main process)",
+        help="run VTK-sensitive tests in the current pytest process",
+    )
+    group.addoption(
+        "--vtk-timeout",
+        type=float,
+        default=DEFAULT_TIMEOUT_SECONDS,
+        metavar="SECONDS",
+        help="maximum runtime for one isolated VTK test",
     )
 
 
 def pytest_collection_modifyitems(
-    config: pytest.Config, items: list[pytest.Item]
+    config: pytest.Config,
+    items: list[pytest.Item],
 ) -> None:
-    """Mark pyvista test modules for forked execution."""
-    if config.getoption("--no-fork-pyvista"):
+    """Mark known VTK modules and place them after ordinary tests."""
+    if _is_child_process():
         return
 
-    pyvista_items = []
-    other_items = []
-
+    ordinary_items: list[pytest.Item] = []
+    vtk_items: list[pytest.Item] = []
     for item in items:
-        module_name = Path(item.fspath).name
-        if module_name in PYVISTA_TEST_MODULES:
-            item.add_marker(pytest.mark.forked)
-            pyvista_items.append(item)
-        else:
-            other_items.append(item)
+        if Path(str(item.path)).name in VTK_TEST_MODULES:
+            item.add_marker(pytest.mark.pyvista)
 
-    # Reorder: run non-pyvista tests first, then pyvista tests
-    items[:] = other_items + pyvista_items
+        if item.get_closest_marker("pyvista") is None:
+            ordinary_items.append(item)
+        else:
+            vtk_items.append(item)
+
+    items[:] = ordinary_items + vtk_items
 
 
 @pytest.hookimpl(tryfirst=True)
-def pytest_runtest_protocol(item: pytest.Item, nextitem: pytest.Item | None) -> bool:
-    """Run pyvista tests in a forked subprocess."""
-    if not item.get_closest_marker("forked"):
-        return None  # Let pytest handle normally
-
-    if item.config.getoption("--no-fork-pyvista"):
+def pytest_runtest_protocol(
+    item: pytest.Item,
+    nextitem: pytest.Item | None,
+) -> bool | None:
+    """Execute one marked item without loading VTK into the parent."""
+    if item.get_closest_marker("pyvista") is None:
+        return None
+    if item.config.getoption("--no-isolate-vtk") or _is_child_process():
         return None
 
-    module_path = item.fspath
-    test_name = item.name
+    item.ihook.pytest_runtest_logstart(
+        nodeid=item.nodeid,
+        location=item.location,
+    )
+    start_time = time.time()
+    outcome, longrepr, output = _run_isolated_item(item)
+    stop_time = time.time()
 
-    # Run this specific test in a subprocess
-    env = os.environ.copy()
-    env["PYTEST_CURRENT_TEST"] = f"{module_path}::{test_name}"
+    if output and outcome != "passed":
+        terminal = item.config.pluginmanager.get_plugin("terminalreporter")
+        if terminal is not None:
+            terminal.write(output)
 
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pytest",
-            f"{module_path}::{test_name}",
-            "-v",
-            "--tb=short",
-        ],
-        capture_output=True,
+    report = TestReport(
+        nodeid=item.nodeid,
+        location=item.location,
+        keywords={name: 1 for name in item.keywords},
+        outcome=outcome,
+        longrepr=longrepr,
+        when="call",
+        sections=[],
+        duration=stop_time - start_time,
+        start=start_time,
+        stop=stop_time,
+        user_properties=[],
+    )
+    report.isolated_vtk = True
+    item.ihook.pytest_runtest_logreport(report=report)
+    item.ihook.pytest_runtest_logfinish(
+        nodeid=item.nodeid,
+        location=item.location,
+    )
+    return True
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_runtest_logreport(report: TestReport) -> None:
+    """Exit a one-test child before unsafe VTK teardown can execute."""
+    if not _is_child_process() or report.when != "call":
+        return
+
+    if report.failed:
+        sys.stderr.write(f"\n{report.longreprtext}\n")
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(1 if report.failed else 0)
+
+
+def _run_isolated_item(
+    item: pytest.Item,
+) -> tuple[str, str | None, str]:
+    timeout = item.config.getoption("--vtk-timeout")
+    command = [
+        sys.executable,
+        "-m",
+        "felix.pytests.isolated_pytest",
+        item.nodeid,
+    ]
+    environment = os.environ.copy()
+    environment[VTK_CHILD_ENV] = "1"
+
+    process = subprocess.Popen(
+        command,
+        cwd=Path.cwd(),
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         text=True,
-        timeout=180,
-        env=env,
+        start_new_session=True,
+        preexec_fn=_set_parent_death_signal if os.name == "posix" else None,
     )
+    try:
+        output, _ = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        output = _stop_process_group(process)
+        message = (
+            f"isolated VTK test exceeded {timeout:.1f} seconds; "
+            "its process group was terminated"
+        )
+        return "failed", message, output
 
-    # Replay output
-    if result.stdout:
-        sys.stdout.write(result.stdout)
-    if result.stderr:
-        sys.stderr.write(result.stderr)
+    if process.returncode == 0:
+        return "passed", None, output
 
-    # Report result to pytest
-    if result.returncode == 0:
-        item.session.testscollected += 1
-        item._forked_result = "passed"
-    else:
-        item._forked_result = "failed"
-
-    # Create a fake report for pytest's internal tracking
-    from _pytest.reports import TestReport
-
-    rep = TestReport.from_item_and_call(
-        item=item,
-        call=pytest.CallInfo(
-            lambda: None,  # dummy
-            sys.exc_info() if result.returncode != 0 else (None, None, None),
-        ),
-    )
-    rep.outcome = "passed" if result.returncode == 0 else "failed"
-    rep.longrepr = result.stderr if result.returncode != 0 else ""
-    item.session.testscollected -= 1  # We'll report manually
-    item.ihook.pytest_runtest_logreport(report=rep)
-
-    return True  # Tell pytest we handled this test
+    message = f"isolated VTK test exited with status {process.returncode}"
+    return "failed", message, output
 
 
-def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
-    """Add summary of forked tests."""
-    forked_passed = 0
-    forked_failed = 0
-    for rep in terminalreporter.stats.get("passed", []):
-        if getattr(rep, "_forked_result", None) == "passed":
-            forked_passed += 1
-    for rep in terminalreporter.stats.get("failed", []):
-        if getattr(rep, "_forked_result", None) == "failed":
-            forked_failed += 1
+def _stop_process_group(process: subprocess.Popen[str]) -> str:
+    os.killpg(process.pid, signal.SIGTERM)
+    try:
+        output, _ = process.communicate(timeout=TERMINATE_GRACE_SECONDS)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)
+        output, _ = process.communicate()
+    return output
 
-    if forked_passed or forked_failed:
-        terminalreporter.write_sep("=", "Forked PyVista Tests")
-        terminalreporter.write_line(f"  Passed: {forked_passed}")
-        terminalreporter.write_line(f"  Failed: {forked_failed}")
+
+def _is_child_process() -> bool:
+    return os.environ.get(VTK_CHILD_ENV) == "1"
+
+
+def _set_parent_death_signal() -> None:
+    """Ask Linux to kill a child if its pytest parent disappears."""
+    try:
+        libc = ctypes.CDLL(None)
+        libc.prctl(1, signal.SIGKILL)
+    except (AttributeError, OSError):
+        return
+
+    if os.getppid() == 1:
+        os.kill(os.getpid(), signal.SIGKILL)

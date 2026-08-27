@@ -29,15 +29,12 @@ dependencies = [
 where = ["src"]
 
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
 markers = [
-    "pyvista: marks tests that use pyvista/vtk (run in isolated subprocess)",
-    "forked: internal marker for tests run in forked subprocess",
+    "pyvista: runs a test in a bounded process isolated from pyvista/vtk",
 ]
 testpaths = ["src/felix/pytests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-addopts = "-p no:faulthandler"
 
 [project.entry-points."pytest11"]
 forked_pyvista = "felix.pytests.forked_pyvista"

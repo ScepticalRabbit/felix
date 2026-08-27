@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pyvista as pv
 
 from pyvale.dataio.simdata import SimData
 from felix.python.enums import EDim, ERayMode
@@ -21,7 +20,6 @@ from felix.python.fieldspecs import IField
 from felix.python.sensordata import SensorData
 from felix.python.sensordescriptor import SensorDescriptor
 from felix.python.sensorspoint import ErrIntegrator, ISensorArray
-from pyvale.sensorsim.fieldconverter import simdata_to_pyvista_vis
 
 
 class SensorsRay(ISensorArray):
@@ -137,7 +135,10 @@ class SensorsRay(ISensorArray):
     def get_sample_times(self) -> np.ndarray:
         return self._sample_times
 
-    def _build_surface_grid(self) -> pv.PolyData:
+    def _build_surface_grid(self) -> object:
+        import pyvista as pv
+        from pyvale.sensorsim.fieldconverter import simdata_to_pyvista_vis
+
         is_3d = self._sim_data.coords.shape[1] == 3 and np.any(
             np.abs(self._sim_data.coords[:, 2]) > 1e-12
         )

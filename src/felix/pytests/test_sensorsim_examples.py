@@ -8,12 +8,12 @@
 # ==============================================================================
 import runpy
 from pathlib import Path
+from typing import Any
 
+import felix as fx
 import pytest
-import pyvista as pv
 import matplotlib
 matplotlib.use("Agg")
-pv.OFF_SCREEN = True
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 BASIC_EXS_DIR = PROJECT_ROOT / "src" / "felix" / "pyexs_basic"
@@ -55,6 +55,60 @@ EXTENDED_EXAMPLES = [
     "ex8e_ray_sensors_lidar_and_pyrometer.py",
     "ex8f_sensor_library_typical_transducers.py",
 ]
+
+
+class _PlotterDisabled:
+    """Minimal plotter used while executing examples under pytest."""
+
+    off_screen = True
+    camera_position: Any = None
+
+    def screenshot(self, *args: Any, **kwargs: Any) -> None:
+        return None
+
+    def close(self) -> None:
+        return None
+
+    def show(self) -> None:
+        return None
+
+
+class _FigureDisabled:
+    def savefig(self, *args: Any, **kwargs: Any) -> None:
+        return None
+
+
+@pytest.fixture(autouse=True)
+def disable_pyvista_plotting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exercise example calculations without creating native VTK windows."""
+    def create_disabled_plotter(*args: Any, **kwargs: Any) -> _PlotterDisabled:
+        return _PlotterDisabled()
+
+    def create_disabled_figure(*args: Any, **kwargs: Any) -> tuple[Any, Any]:
+        return _FigureDisabled(), None
+
+    monkeypatch.setattr(
+        fx,
+        "plot_point_sensors_on_sim",
+        create_disabled_plotter,
+    )
+    monkeypatch.setattr(
+        fx,
+        "plot_sensors_on_sim",
+        create_disabled_plotter,
+    )
+    monkeypatch.setattr(
+        fx,
+        "plot_time_traces",
+        create_disabled_figure,
+    )
+    monkeypatch.setattr(
+        fx,
+        "plot_exp_traces",
+        create_disabled_figure,
+    )
 
 
 @pytest.mark.parametrize("example_name", BASIC_EXAMPLES)

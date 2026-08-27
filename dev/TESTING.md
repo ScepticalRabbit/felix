@@ -50,6 +50,19 @@ Do not weaken this cleanup when adding an example. If an example creates a
 different external resource, add equivalent cleanup that also runs when the
 example fails.
 
+Tests in VTK-sensitive modules run serially in disposable child processes.
+Each child has a 120 second timeout and is terminated as a complete process
+group if it exceeds that limit. The child exits immediately after its test call
+report so unsafe VTK interpreter teardown cannot corrupt the main pytest
+process. Use `@pytest.mark.pyvista` for a VTK-sensitive test outside one of the
+existing marked modules. Use `--no-isolate-vtk` only when diagnosing the native
+failure locally; it is not the supported full-suite mode.
+
+Example tests replace PyVista and Matplotlib plotting entry points with inert
+test doubles. They validate the calculations and example control flow without
+creating native rendering contexts. Check interactive visual behaviour manually
+when an example's plotting code changes.
+
 Test normal interactive example behaviour manually outside pytest when a
 change affects plotting or visual output.
 
