@@ -180,7 +180,7 @@ pv_plot = sens.plot_sensors_on_sim(
 if show_plots:
     pv_plot.show()
 else:
-    pv_plot.close()
+pv_plot.close()
 
 # %%
 # .. image:: ../../../../_static/ext_ex7c_volume_rtd.png

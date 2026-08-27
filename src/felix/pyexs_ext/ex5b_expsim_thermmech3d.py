@@ -262,6 +262,7 @@ pv_plot.camera_position = cam_pos
 pv_plot.off_screen = True
 if pv_plot.off_screen:
     pv_plot.screenshot(output_path/"ext_ex5b_temp_locs.png")
+    pv_plot.close()
 else:
     pv_plot.show()
 
@@ -284,6 +285,7 @@ pv_plot.camera_position = cam_pos
 pv_plot.off_screen = True
 if pv_plot.off_screen:
     pv_plot.screenshot(output_path/"ext_ex5b_strain_locs.png")
+    pv_plot.close()
 else:
     pv_plot.show()
 

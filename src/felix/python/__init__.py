@@ -6,6 +6,7 @@
 #
 # Authors: scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
+from felix.python.visualisation import *
 from felix.python.enums import (
     EDim,
     EDifferentialMode,
@@ -152,7 +153,6 @@ from felix.python.sensortools import (
 )
 from felix.python import sensortools
 from felix.python import sensortools as simtools
-from felix.python.visualisation import *
 
 
 __all__ = [name for name in globals() if not name.startswith("_")]

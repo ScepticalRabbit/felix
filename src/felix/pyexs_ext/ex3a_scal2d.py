@@ -137,6 +137,7 @@ pv_plot = sens.plot_point_sensors_on_sim(sens_array,
 pv_plot.off_screen = True
 if pv_plot.off_screen:
     pv_plot.screenshot(output_path/"ext_ex3a_locs.png")
+    pv_plot.close()
 else:
     pv_plot.show()
 

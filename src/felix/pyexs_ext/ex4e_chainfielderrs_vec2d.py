@@ -212,6 +212,7 @@ save_render = output_path/"ext_ex4e_locs.png"
 pv_plot.off_screen = True
 if pv_plot.off_screen:
     pv_plot.screenshot(save_render)
+    pv_plot.close()
 else:
     pv_plot.show()
 

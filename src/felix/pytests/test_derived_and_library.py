@@ -113,7 +113,7 @@ def test_sensor_library_presets() -> None:
     assert meas_tc.shape == (1, 1, len(sim_scal.time))
 
     # 2. Strain gauge
-    sg = fx.SensorLibrary.strain_gauge_uniaxial(
+    sg = fx.SensorLibrary.strain_gauge(
         sim_tens, pos, with_meas_errs=True, sample_times=sim_tens.time
     )
     meas_sg = sg.get_measurements()
@@ -122,8 +122,8 @@ def test_sensor_library_presets() -> None:
     # 3. Extensometer
     ext = fx.SensorLibrary.extensometer(
         sim_vec,
-        pos_a=np.array([[2.0, 2.0, 0.0]]),
-        pos_b=np.array([[4.0, 2.0, 0.0]]),
+        anchor_a=np.array([[2.0, 2.0, 0.0]]),
+        anchor_b=np.array([[4.0, 2.0, 0.0]]),
         sample_times=sim_vec.time,
         with_meas_errs=True,
     )
@@ -131,10 +131,10 @@ def test_sensor_library_presets() -> None:
     assert meas_ext.shape == (1, 1, len(sim_vec.time))
 
     # 4. Laser distance
-    lidar = fx.SensorLibrary.laser_distance(
+    lidar = fx.SensorLibrary.lidar(
         sim_scal,
-        origins=np.array([[5.0, 3.75, 50.0]]),
-        directions=np.array([[0.0, 0.0, -1.0]]),
+        scanner_position=np.array([[5.0, 3.75, 50.0]]),
+        beam_direction=np.array([[0.0, 0.0, -1.0]]),
         sample_times=sim_scal.time,
         with_meas_errs=True,
     )

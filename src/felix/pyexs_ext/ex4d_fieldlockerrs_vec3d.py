@@ -161,6 +161,7 @@ for kk in disp_keys:
     pv_plot.off_screen = True
     if pv_plot.off_screen:
         pv_plot.screenshot(output_path/f"ext_ex4d_locs_{kk}.png")
+        pv_plot.close()
     else:
         pv_plot.show()
 

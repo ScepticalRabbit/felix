@@ -178,6 +178,7 @@ pv_plot.camera_position = [(59.354, 43.428, 69.946),
 pv_plot.off_screen = True
 if pv_plot.off_screen:
     pv_plot.screenshot(output_path/"ext_ex4b_locs.png")
+    pv_plot.close()
 else:
     pv_plot.show()
 
