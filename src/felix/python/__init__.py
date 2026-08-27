@@ -129,12 +129,34 @@ from felix.python.fieldtransforms import (
     IFieldTransform,
 )
 from felix.python.measurementdata import MeasurementData
-from felix.python.postprocessderived import (
+from felix.python.postprocessor import (
     IMeasurementProcessor,
+    ProcessingPipeline,
+)
+from felix.python.postprocessfilters import (
+    ProcessFilterButterworth,
+    ProcessFilterGaussian,
+    ProcessFilterMedian,
+    ProcessFilterMovingAverage,
+    ProcessFilterSavitzkyGolay,
+)
+from felix.python.postprocesstemporal import (
+    ProcessDifferentiateTime,
+    ProcessIntegrateTime,
+)
+from felix.python.postprocessspatial import (
+    ProcessIntegrateSpatial,
+    ProcessSpatialStrain,
+)
+from felix.python.postprocessderived import (
+    ProcessCustom,
+    ProcessMagnitude,
+    ProcessRatio,
     ProcessRelativeDifference,
     ProcessStiffness,
     ProcessWork,
 )
+from felix.python.postprocessgraph import PostProcessGraph
 from felix.python.sensorlibrary import SensorLibrary
 from felix.python.sensortools import (
     gen_pos_cylinder,

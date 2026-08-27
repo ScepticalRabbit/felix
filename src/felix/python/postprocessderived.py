@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from typing import Any, Sequence
 import numpy as np
 from scipy import integrate
 
@@ -194,4 +195,158 @@ class ProcessRelativeDifference(IMeasurementProcessor):
             components=out_comps,
             units=units,
             descriptor=desc,
+        )
+
+
+class ProcessRatio(IMeasurementProcessor):
+    """Calculates ratio r(t) = y_B(t) / y_A(t) between two sensor datasets."""
+
+    __slots__ = ("_source_a", "_source_b", "_eps", "_label", "_units")
+
+    def __init__(
+        self,
+        source_a: str,
+        source_b: str,
+        eps: float = 1e-9,
+        label: str = "ratio",
+        units: str = "",
+    ) -> None:
+        self._source_a = source_a
+        self._source_b = source_b
+        self._eps = float(eps)
+        self._label = label
+        self._units = units
+
+    def get_source_keys(self) -> tuple[str, ...]:
+        return (self._source_a, self._source_b)
+
+    def get_output_components(
+        self,
+        input_metadata: dict[str, MeasurementData],
+    ) -> tuple[str, ...]:
+        return (self._label,)
+
+    def process(
+        self,
+        inputs: dict[str, MeasurementData],
+    ) -> MeasurementData:
+        data_a = inputs[self._source_a]
+        data_b = inputs[self._source_b]
+
+        denom = np.where(
+            np.abs(data_a.values) < self._eps, self._eps, data_a.values
+        )
+        ratio_vals = data_b.values / denom
+
+        desc = SensorDescriptor(
+            name=self._label, tag="RATIO", units=self._units
+        )
+
+        return MeasurementData(
+            values=ratio_vals,
+            sample_times=data_a.sample_times,
+            positions=data_b.positions,
+            components=(self._label,),
+            units=self._units,
+            descriptor=desc,
+        )
+
+
+class ProcessMagnitude(IMeasurementProcessor):
+    """Computes Euclidean magnitude norm of vector components:
+    ||v|| = sqrt(sum(v_i^2)).
+    """
+
+    __slots__ = ("_source", "_label", "_units")
+
+    def __init__(
+        self,
+        source: str,
+        label: str = "magnitude",
+        units: str | None = None,
+    ) -> None:
+        self._source = source
+        self._label = label
+        self._units = units
+
+    def get_source_keys(self) -> tuple[str, ...]:
+        return (self._source,)
+
+    def get_output_components(
+        self,
+        input_metadata: dict[str, MeasurementData],
+    ) -> tuple[str, ...]:
+        return (self._label,)
+
+    def process(
+        self,
+        inputs: dict[str, MeasurementData],
+    ) -> MeasurementData:
+        data = inputs[self._source]
+        vals = data.values
+        mag = np.linalg.norm(vals, axis=-2, keepdims=True)
+
+        units_out = self._units if self._units is not None else data.units
+        desc = SensorDescriptor(
+            name=self._label, tag="MAG", units=units_out
+        )
+
+        return MeasurementData(
+            values=mag,
+            sample_times=data.sample_times,
+            positions=data.positions,
+            components=(self._label,),
+            units=units_out,
+            descriptor=desc,
+        )
+
+
+class ProcessCustom(IMeasurementProcessor):
+    """Wraps an arbitrary user-defined callable functional into the
+    IMeasurementProcessor interface.
+    """
+
+    __slots__ = ("_sources", "_func", "_output_components", "_kwargs")
+
+    def __init__(
+        self,
+        sources: Sequence[str] | dict[str, str],
+        func: Callable[..., MeasurementData | np.ndarray],
+        output_components: tuple[str, ...] = ("custom",),
+        **kwargs: Any,
+    ) -> None:
+        if isinstance(sources, dict):
+            self._sources = tuple(sources.values())
+        else:
+            self._sources = tuple(sources)
+
+        self._func = func
+        self._output_components = output_components
+        self._kwargs = kwargs
+
+    def get_source_keys(self) -> tuple[str, ...]:
+        return self._sources
+
+    def get_output_components(
+        self,
+        input_metadata: dict[str, MeasurementData],
+    ) -> tuple[str, ...]:
+        return self._output_components
+
+    def process(
+        self,
+        inputs: dict[str, MeasurementData],
+    ) -> MeasurementData:
+        res = self._func(inputs, **self._kwargs)
+        if isinstance(res, MeasurementData):
+            return res
+
+        ref_data = next(iter(inputs.values()))
+        return MeasurementData(
+            values=np.asarray(res),
+            sample_times=ref_data.sample_times,
+            positions=ref_data.positions,
+            components=self._output_components,
+            units=ref_data.units,
+            descriptor=ref_data.descriptor,
         )
