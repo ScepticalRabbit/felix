@@ -144,19 +144,23 @@ pub export fn felixSimulatePointSensorExperiments(
             num_errors,
             out_truth_ptr + offset,
             out_measurements_ptr + offset,
-            out_errs_sys_ptr + offset,
-            out_errs_rand_ptr + offset,
-            out_errs_total_ptr + offset,
+            if (out_errs_sys_ptr != null) out_errs_sys_ptr + offset else null,
+            if (out_errs_rand_ptr != null) out_errs_rand_ptr + offset else null,
+            if (out_errs_total_ptr != null) out_errs_total_ptr + offset else null,
             seed +% @as(u64, @intCast(ee)),
         );
-        @memcpy(
-            (out_pert_positions_ptr + ee * sensor_in_ptr[0].num_sensors * 3)[0 .. sensor_in_ptr[0].num_sensors * 3],
-            sensor_in_ptr[0].work_positions_ptr[0 .. sensor_in_ptr[0].num_sensors * 3],
-        );
-        @memcpy(
-            (out_pert_times_ptr + ee * num_times)[0..num_times],
-            sensor_in_ptr[0].work_times_ptr[0..num_times],
-        );
+        if (out_pert_positions_ptr != null and sensor_in_ptr[0].work_positions_ptr != null) {
+            @memcpy(
+                (out_pert_positions_ptr + ee * sensor_in_ptr[0].num_sensors * 3)[0 .. sensor_in_ptr[0].num_sensors * 3],
+                sensor_in_ptr[0].work_positions_ptr[0 .. sensor_in_ptr[0].num_sensors * 3],
+            );
+        }
+        if (out_pert_times_ptr != null and sensor_in_ptr[0].work_times_ptr != null) {
+            @memcpy(
+                (out_pert_times_ptr + ee * num_times)[0..num_times],
+                sensor_in_ptr[0].work_times_ptr[0..num_times],
+            );
+        }
     }
     return 0;
 }

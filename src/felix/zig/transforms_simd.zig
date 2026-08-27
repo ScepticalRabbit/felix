@@ -172,9 +172,9 @@ pub fn transformVector3DBatch(
 
 test "transforms SIMD vs scalar parity" {
     const rot_mat_33 = [9]F{
-        0.8660254037844387,  -0.5,                0.0,
-        0.5,                 0.8660254037844387,  0.0,
-        0.0,                 0.0,                 1.0,
+        0.8660254037844387, -0.5,               0.0,
+        0.5,                0.8660254037844387, 0.0,
+        0.0,                0.0,                1.0,
     };
 
     var vx_arr: [SimdWidth]F = undefined;
@@ -195,6 +195,10 @@ test "transforms SIMD vs scalar parity" {
     var simd_out: Vec3Packet = undefined;
     transformVector3DPacket(&rot_mat_33, in_packet, &simd_out);
 
+    const out_x_arr: [SimdWidth]F = simd_out.x;
+    const out_y_arr: [SimdWidth]F = simd_out.y;
+    const out_z_arr: [SimdWidth]F = simd_out.z;
+
     for (0..SimdWidth) |ii| {
         var scal_x: F = 0.0;
         var scal_y: F = 0.0;
@@ -208,8 +212,8 @@ test "transforms SIMD vs scalar parity" {
             &scal_y,
             &scal_z,
         );
-        try std.testing.expectApproxEqAbs(scal_x, simd_out.x[ii], 1e-12);
-        try std.testing.expectApproxEqAbs(scal_y, simd_out.y[ii], 1e-12);
-        try std.testing.expectApproxEqAbs(scal_z, simd_out.z[ii], 1e-12);
+        try std.testing.expectApproxEqAbs(scal_x, out_x_arr[ii], 1e-12);
+        try std.testing.expectApproxEqAbs(scal_y, out_y_arr[ii], 1e-12);
+        try std.testing.expectApproxEqAbs(scal_z, out_z_arr[ii], 1e-12);
     }
 }
