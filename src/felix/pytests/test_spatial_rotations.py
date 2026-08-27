@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from felix.sensorsim.sensortools import (
+from felix import (
     orient_from_direction,
     orient_from_normal_and_tangent,
 )

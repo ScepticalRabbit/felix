@@ -23,7 +23,7 @@ from scipy.spatial.transform import Rotation
 import matplotlib.pyplot as plt
 
 # pyvale imports
-import felix.sensorsim as sens
+import felix as sens
 import pyvale.dataio as io
 import pyvale.mooseherder as mh
 import pyvale.data as dataset
@@ -278,4 +278,3 @@ for kk in (strain_norm_keys+strain_dev_keys):
 #    :alt: Simulated strain sensor traces
 #    :width: 500px
 #    :align: center
-

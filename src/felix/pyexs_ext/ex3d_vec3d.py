@@ -22,7 +22,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # pyvale imports
-import felix.sensorsim as sens
+import felix as sens
 import pyvale.dataio as io
 import pyvale.mooseherder as mh
 import pyvale.data as dataset
@@ -43,7 +43,7 @@ sim_data: io.SimData = sens.scale_length_units(scale=1000.0,
 # 2. Build virtual sensor arrays
 # --------------------------------
 
-sens.simtools.print_dimensions(sim_data)
+sens.print_dimensions(sim_data)
 
 # Simulations is a 10mm cube
 sensor_positions = np.array(((5.0,0.0,5.0),     # cube x-z face

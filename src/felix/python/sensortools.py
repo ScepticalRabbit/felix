@@ -4,9 +4,30 @@
 # Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
 import copy
+import dataclasses
 import numpy as np
 from scipy.spatial.transform import Rotation
 from pyvale.dataio.simdata import SimData
+
+
+def print_dataclass_fields(in_data: object) -> None:
+    print(f"Data class fields for: {type(in_data)}")
+    for data_field in dataclasses.fields(in_data):
+        if not data_field.name.startswith("__"):
+            print(f"    {data_field.name}: {data_field.type}")
+    print()
+
+
+def print_sim_data(sim_data: SimData) -> None:
+    print(f"coords: {None if sim_data.coords is None else sim_data.coords.shape}")
+    print(f"time: {None if sim_data.time is None else sim_data.time.shape}")
+    print(f"connect: {type(sim_data.connect)}")
+    print(f"node_vars: {None if sim_data.node_vars is None else tuple(sim_data.node_vars)}")
+
+
+def print_dimensions(sim_data: SimData) -> None:
+    for name, limits in get_sim_dims(sim_data).items():
+        print(f"{name} [min,max] = [{limits[0]},{limits[1]}]")
 
 
 def get_sim_dims(sim_data: SimData) -> dict[str, tuple[float, float]]:

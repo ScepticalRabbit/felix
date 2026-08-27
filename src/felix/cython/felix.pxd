@@ -31,6 +31,40 @@ cdef extern from "felix.h":
         size_t        num_rot_matrices
         uint32_t      spatial_dims
         uint32_t      is_tensor
+        double       *work_positions_ptr
+        double       *work_times_ptr
+        double       *work_rot_matrices_ptr
+        double       *scratch_positions_ptr
+        double       *scratch_times_ptr
+        double       *scratch_rot_matrices_ptr
+
+    ctypedef struct DistributionSpec:
+        uint32_t      dist_type
+        double        param0
+        double        param1
+        double        param2
+        uint64_t      seed
+        uint32_t      has_seed
+
+    ctypedef struct FieldPerturbationSpec:
+        const double          *pos_offset_ptr
+        const uint8_t         *pos_lock_ptr
+        const double          *angle_offset_ptr
+        const uint8_t         *angle_lock_ptr
+        const double          *time_offset_ptr
+        DistributionSpec       pos_rand[3]
+        DistributionSpec       angle_rand[3]
+        DistributionSpec       time_rand
+        uint32_t                drift_kind
+        double                  drift_param0
+        double                  drift_param1
+        double                  drift_param2
+        const double           *drift_poly_ptr
+        size_t                  drift_poly_len
+        uint32_t                spatial_kind
+        double                  spatial_dim_x
+        double                  spatial_dim_y
+        double                  spatial_dim_z
 
     ctypedef struct ErrorSpec:
         uint32_t      kind
@@ -46,6 +80,7 @@ cdef extern from "felix.h":
         size_t        table_rows
         const double *poly_coeffs_ptr
         size_t        poly_coeffs_len
+        const FieldPerturbationSpec *field_spec_ptr
 
     size_t felixGetLastError(
         uint8_t *out_buf,
@@ -62,6 +97,35 @@ cdef extern from "felix.h":
         double                  *out_errs_sys_ptr,
         double                  *out_errs_rand_ptr,
         double                  *out_errs_total_ptr,
+    )
+
+    int felixSimulatePointSensorExperiments(
+        const SimMeshInput      *mesh_in_ptr,
+        const SensorArrayInput  *sensor_in_ptr,
+        const ErrorSpec         *error_specs_ptr,
+        size_t                   num_errors,
+        size_t                   num_experiments,
+        uint64_t                 seed,
+        double                  *out_truth_ptr,
+        double                  *out_measurements_ptr,
+        double                  *out_errs_sys_ptr,
+        double                  *out_errs_rand_ptr,
+        double                  *out_errs_total_ptr,
+        double                  *out_pert_positions_ptr,
+        double                  *out_pert_times_ptr,
+    )
+
+    int felixCalcExperimentStats(
+        const double *values_ptr,
+        size_t        num_experiments,
+        size_t        num_values,
+        double       *out_mean_ptr,
+        double       *out_std_ptr,
+        double       *out_min_ptr,
+        double       *out_max_ptr,
+        double       *out_median_ptr,
+        double       *out_var_ptr,
+        double       *out_mad_ptr,
     )
 
     void felixTransformVectors2D(

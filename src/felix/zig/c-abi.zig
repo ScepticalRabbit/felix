@@ -13,6 +13,7 @@ const transforms = @import("transforms.zig");
 const errors = @import("errors.zig");
 const random = @import("random.zig");
 const sensor_sim = @import("sensor_sim.zig");
+const stats = @import("stats.zig");
 
 const F: type = f64;
 
@@ -100,8 +101,102 @@ pub export fn felixSimulatePointSensors(
         out_errs_sys_ptr,
         out_errs_rand_ptr,
         out_errs_total_ptr,
+        0,
     );
 
+    return 0;
+}
+
+pub export fn felixSimulatePointSensorExperiments(
+    mesh_in_ptr: [*c]const sensor_sim.SimMeshInput,
+    sensor_in_ptr: [*c]const sensor_sim.SensorArrayInput,
+    error_specs_ptr: [*c]const errors.ErrorSpec,
+    num_errors: usize,
+    num_experiments: usize,
+    seed: u64,
+    out_truth_ptr: [*c]F,
+    out_measurements_ptr: [*c]F,
+    out_errs_sys_ptr: [*c]F,
+    out_errs_rand_ptr: [*c]F,
+    out_errs_total_ptr: [*c]F,
+    out_pert_positions_ptr: [*c]F,
+    out_pert_times_ptr: [*c]F,
+) i32 {
+    if (mesh_in_ptr == null or sensor_in_ptr == null or
+        out_truth_ptr == null or out_measurements_ptr == null)
+    {
+        setLastErrorSlice("Null pointer passed to experiment simulation");
+        return -1;
+    }
+
+    const num_times = if (sensor_in_ptr[0].num_sample_times > 0)
+        sensor_in_ptr[0].num_sample_times
+    else
+        mesh_in_ptr[0].num_sim_times;
+    const result_len = sensor_in_ptr[0].num_sensors *
+        mesh_in_ptr[0].num_components * num_times;
+    for (0..num_experiments) |ee| {
+        const offset = ee * result_len;
+        sensor_sim.runSensorSimulation(
+            mesh_in_ptr,
+            sensor_in_ptr,
+            error_specs_ptr,
+            num_errors,
+            out_truth_ptr + offset,
+            out_measurements_ptr + offset,
+            out_errs_sys_ptr + offset,
+            out_errs_rand_ptr + offset,
+            out_errs_total_ptr + offset,
+            seed +% @as(u64, @intCast(ee)),
+        );
+        @memcpy(
+            (out_pert_positions_ptr + ee * sensor_in_ptr[0].num_sensors * 3)[0 .. sensor_in_ptr[0].num_sensors * 3],
+            sensor_in_ptr[0].work_positions_ptr[0 .. sensor_in_ptr[0].num_sensors * 3],
+        );
+        @memcpy(
+            (out_pert_times_ptr + ee * num_times)[0..num_times],
+            sensor_in_ptr[0].work_times_ptr[0..num_times],
+        );
+    }
+    return 0;
+}
+
+pub export fn felixCalcExperimentStats(
+    values_ptr: [*c]const F,
+    num_experiments: usize,
+    num_values: usize,
+    out_mean_ptr: [*c]F,
+    out_std_ptr: [*c]F,
+    out_min_ptr: [*c]F,
+    out_max_ptr: [*c]F,
+    out_median_ptr: [*c]F,
+    out_var_ptr: [*c]F,
+    out_mad_ptr: [*c]F,
+) i32 {
+    if (values_ptr == null or out_mean_ptr == null or out_std_ptr == null or
+        out_min_ptr == null or out_max_ptr == null or out_median_ptr == null or
+        out_var_ptr == null or out_mad_ptr == null)
+    {
+        setLastErrorSlice("Null pointer passed to felixCalcExperimentStats");
+        return -1;
+    }
+
+    stats.calcExperimentStats(
+        std.heap.c_allocator,
+        values_ptr[0 .. num_experiments * num_values],
+        num_experiments,
+        num_values,
+        out_mean_ptr[0..num_values],
+        out_std_ptr[0..num_values],
+        out_min_ptr[0..num_values],
+        out_max_ptr[0..num_values],
+        out_median_ptr[0..num_values],
+        out_var_ptr[0..num_values],
+        out_mad_ptr[0..num_values],
+    ) catch |err| {
+        setLastError(err);
+        return -1;
+    };
     return 0;
 }
 

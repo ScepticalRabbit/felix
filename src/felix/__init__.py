@@ -3,28 +3,9 @@
 # License: MIT
 # Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
-from felix import sensorsim
-from felix.sensorsim import (
-    SensorsPoint,
-    SensorData,
-    SensorDescriptor,
-    FieldScalar,
-    FieldVector,
-    FieldTensor,
-    ErrIntegrator,
-    ExperimentSimulator,
-)
+from felix.python import *
+from felix.python import __all__ as _python_all
 
 __version__ = "2026.8.0"
 
-__all__ = [
-    "sensorsim",
-    "SensorsPoint",
-    "SensorData",
-    "SensorDescriptor",
-    "FieldScalar",
-    "FieldVector",
-    "FieldTensor",
-    "ErrIntegrator",
-    "ExperimentSimulator",
-]
+__all__ = list(_python_all)

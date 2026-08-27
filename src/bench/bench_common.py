@@ -10,7 +10,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 import pyvale.sensorsim as ps
-import felix.sensorsim as fs
+import felix as fs
 from pyvale.dataio.simdata import SimData, EMeshType
 
 from bench.benchparams import (

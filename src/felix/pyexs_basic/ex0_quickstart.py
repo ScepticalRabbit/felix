@@ -28,7 +28,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # pyvale imports
-import felix.sensorsim as sens
+import felix as sens
 import pyvale.dataio as io
 import pyvale.mooseherder as mh
 import pyvale.data as dataset

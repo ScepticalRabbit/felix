@@ -4,24 +4,25 @@
 # Copyright (c) 2025-2026 scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
 import numpy as np
+import pyvale.verif.analyticsimdatafactory as analytic
 import pytest
 
-from felix.sensorsim.sensordata import SensorData
-from felix.sensorsim.sensortools import (
+from felix import EDim, FieldScalar, SensorData, SensorsPoint
+from felix import (
     gen_pos_grid_inside,
     gen_pos_grid_boundary,
 )
-from felix.sensorsim.errorsyscalib import ErrSysCalibration
-from felix.sensorsim.errorsysdep import (
+from felix import ErrSysCalibration
+from felix import (
     ErrSysRoundOff,
     ErrSysDigitisation,
     ErrSysSaturation,
 )
-from felix.sensorsim.errorsysindep import (
+from felix import (
     ErrSysOffset,
     ErrSysOffsetPercent,
 )
-from felix.sensorsim.generatorsrandom import GenUniform, GenNormal
+from felix import GenUniform, GenNormal
 
 
 def test_gen_pos_grid_boundary() -> None:
@@ -69,31 +70,35 @@ def test_calibration_inversion() -> None:
         n_cal_divs=10000,
     )
 
-    dummy_sens = SensorData()
-    err_basis = np.array([[[10.0, 20.0, 30.0]]], dtype=np.float64)
-    errs, _ = cal_sim.sim_errs(err_basis, dummy_sens)
+    sensors = build_analytic_sensors()
+    truth = sensors.get_truth()
+    sensors.set_error_chain([cal_sim])
+    measurements = sensors.sim_measurements()
 
-    assert errs.shape == err_basis.shape
-    v_exact = (-2.0 + np.sqrt(4.0 + 4.0)) / 0.2
-    expected_err = assumed_calib(np.array([v_exact]))[0] - 10.0
-    assert errs[0, 0, 0] == pytest.approx(expected_err, abs=1e-3)
+    raw = (-2.0 + np.sqrt(4.0 + 0.4 * truth)) / 0.2
+    expected = assumed_calib(raw)
+    assert np.allclose(measurements, expected, atol=1e-3)
 
 
 def test_sys_errors() -> None:
-    sens_data = SensorData()
-    basis = np.ones((2, 1, 5)) * 10.0
+    sensors = build_analytic_sensors()
+    truth = sensors.get_truth()
 
-    # Offset
-    e_off = ErrSysOffset(2.5)
-    err, _ = e_off.sim_errs(basis, sens_data)
-    assert np.allclose(err, 2.5)
+    sensors.set_error_chain([ErrSysOffset(2.5)])
+    assert np.allclose(sensors.sim_measurements(), truth + 2.5)
 
-    # Offset Percent
-    e_pct = ErrSysOffsetPercent(5.0)
-    err, _ = e_pct.sim_errs(basis, sens_data)
-    assert np.allclose(err, 0.5)
+    sensors.set_error_chain([ErrSysOffsetPercent(5.0)])
+    assert np.allclose(sensors.sim_measurements(), truth * 1.05)
 
-    # Saturation
-    e_sat = ErrSysSaturation(meas_min=0.0, meas_max=8.0)
-    err, _ = e_sat.sim_errs(basis, sens_data)
-    assert np.allclose(basis + err, 8.0)
+    sensors.set_error_chain([ErrSysSaturation(meas_min=0.0, meas_max=8.0)])
+    assert np.allclose(sensors.sim_measurements(), np.clip(truth, 0.0, 8.0))
+
+
+def build_analytic_sensors() -> SensorsPoint:
+    sim_data, _ = analytic.scalar_linear_2d()
+    field = FieldScalar(sim_data, "temperature", EDim.TWOD)
+    sensor_data = SensorData(
+        positions=np.array([[2.5, 2.5, 0.0]], dtype=np.float64),
+        sample_times=np.array([0.2, 0.7], dtype=np.float64),
+    )
+    return SensorsPoint(sensor_data, field)

@@ -22,7 +22,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # pyvale imports
-import felix.sensorsim as sens
+import felix as sens
 import pyvale.dataio as io
 import pyvale.mooseherder as mh
 import pyvale.data as dataset
@@ -43,7 +43,7 @@ sim_data: io.SimData = sens.scale_length_units(scale=1000.0,
 # - `gen_pos_grid_inside()`: Uniform grid excluding boundary edges.
 # - `gen_pos_grid_boundary()`: Uniform grid inclusive of boundary limits.
 # - `gen_pos_cylinder()` / `gen_pos_sphere()`: Cylindrical / spherical surfaces.
-sim_dims = sens.simtools.get_sim_dims(sim_data)
+sim_dims = sens.get_sim_dims(sim_data)
 sens_pos: np.ndarray = sens.gen_pos_grid_boundary(
     num_sensors=(1, 4, 1),
     x_lims=(12.5, 12.5),
@@ -203,4 +203,3 @@ fig.savefig(output_path/"ext_ex4b_traces.png",dpi=300,bbox_inches="tight")
 #    :alt: Simulated sensor traces.
 #    :width: 600px
 #    :align: center
-
