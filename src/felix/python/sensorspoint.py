@@ -31,15 +31,28 @@ class ErrIntegrator:
     def __init__(
         self,
         err_chain: list[IErrSimulator],
-        sensor_data: SensorData,
-        err_int_opts: ErrIntOpts,
+        sensor_data: SensorData | None = None,
+        err_int_opts: ErrIntOpts | None = None,
+        sensor_data_initial: SensorData | None = None,
+        meas_shape: tuple[int, int, int] | None = None,
     ) -> None:
         self._err_chain = err_chain
-        self._err_int_opts = err_int_opts
+        self._err_int_opts = (
+            err_int_opts if err_int_opts is not None else ErrIntOpts()
+        )
+        s_data = (
+            sensor_data
+            if sensor_data is not None
+            else (
+                sensor_data_initial
+                if sensor_data_initial is not None
+                else SensorData()
+            )
+        )
         self._errs_systematic = None
         self._errs_random = None
         self._errs_total = None
-        self._sens_data_accumulated = deepcopy(sensor_data)
+        self._sens_data_accumulated = deepcopy(s_data)
 
     def get_sens_data_accumulated(self) -> SensorData:
         return self._sens_data_accumulated
@@ -57,6 +70,22 @@ class ErrIntegrator:
         for error in self._err_chain:
             error.reseed(seed)
 
+    def reseed(self, seed: int | None = None) -> None:
+        self.reseed_error_chain(seed)
+
+    def calc_errors_from_chain(self, truth: np.ndarray) -> np.ndarray:
+        from felix.python.errgraph import err_chain_to_graph
+
+        graph = err_chain_to_graph(
+            self._err_chain,
+            truth.shape,
+            self._sens_data_accumulated,
+        )
+        self._errs_total = graph.calc_errors_from_graph(truth)
+        self._errs_systematic = graph.get_errs_systematic()
+        self._errs_random = graph.get_errs_random()
+        return self._errs_total
+
 
 class SensorsPoint:
     """Thin compatibility adapter over the Zig point-sensor pipeline."""
@@ -66,6 +95,7 @@ class SensorsPoint:
         "_field",
         "_descriptor",
         "_error_integrator",
+        "_err_graph",
         "_truth",
         "_measurements",
     )
@@ -134,6 +164,11 @@ class SensorsPoint:
             self._sensor_data,
             opts,
         )
+        self._err_graph = None
+
+    def set_error_graph(self, err_graph: object | None) -> None:
+        self._err_graph = err_graph
+        self._error_integrator = None
 
     def calc_truth(self) -> np.ndarray:
         self._truth = self._simulate(None)[0]
@@ -145,6 +180,24 @@ class SensorsPoint:
         return self._truth
 
     def sim_measurements(self) -> np.ndarray:
+        if self._err_graph is not None:
+            graph_dict = self._err_graph.to_spec_dict()
+            if self._sensor_data.positions is None:
+                raise ValueError("SensorData.positions must be provided")
+            result = fc.sample_field_config_graph(
+                self._field,
+                self._sensor_data.positions,
+                graph_dict,
+                self._sensor_data.sample_times,
+                self._sensor_data.angles,
+            )
+            self._truth = result[0]
+            self._measurements = result[1]
+            self._err_graph._errs_systematic = result[2]
+            self._err_graph._errs_random = result[3]
+            self._err_graph._errs_total = result[4]
+            return self._measurements
+
         specs = None
         if self._error_integrator is not None:
             specs = [
@@ -166,33 +219,52 @@ class SensorsPoint:
         return self._measurements
 
     def get_errors_systematic(self) -> np.ndarray | None:
-        if self._error_integrator is None:
-            return None
-        return self._error_integrator.get_errs_systematic()
+        if self._error_integrator is not None:
+            return self._error_integrator.get_errs_systematic()
+        if self._err_graph is not None:
+            return self._err_graph.get_errs_systematic()
+        return None
 
     def get_errors_random(self) -> np.ndarray | None:
-        if self._error_integrator is None:
-            return None
-        return self._error_integrator.get_errs_random()
+        if self._error_integrator is not None:
+            return self._error_integrator.get_errs_random()
+        if self._err_graph is not None:
+            return self._err_graph.get_errs_random()
+        return None
 
     def get_errors_total(self) -> np.ndarray | None:
-        if self._error_integrator is None:
-            return None
-        return self._error_integrator.get_errs_total()
+        if self._error_integrator is not None:
+            return self._error_integrator.get_errs_total()
+        if self._err_graph is not None:
+            return self._err_graph.get_errs_total()
+        return None
 
     def sim_experiments(
         self,
         num_experiments: int,
         seed: int = 0,
     ) -> tuple[np.ndarray, ...]:
+        if self._sensor_data.positions is None:
+            raise ValueError("SensorData.positions must be provided")
+
+        if self._err_graph is not None:
+            graph_dict = self._err_graph.to_spec_dict()
+            return fc.sample_field_config_graph(
+                self._field,
+                self._sensor_data.positions,
+                graph_dict,
+                self._sensor_data.sample_times,
+                self._sensor_data.angles,
+                num_experiments,
+                seed,
+            )
+
         specs = None
         if self._error_integrator is not None:
             specs = [
                 _convert_error_spec(error)
                 for error in self._error_integrator._err_chain
             ]
-        if self._sensor_data.positions is None:
-            raise ValueError("SensorData.positions must be provided")
         return fc.sample_field_config(
             self._field,
             self._sensor_data.positions,

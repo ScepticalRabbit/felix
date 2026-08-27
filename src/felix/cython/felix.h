@@ -102,6 +102,22 @@ typedef struct ErrorSpec {
     const FieldPerturbationSpec *field_spec_ptr;
 } ErrorSpec;
 
+typedef struct ErrGraphNodeSpec {
+    uint32_t      op;
+    size_t        num_inputs;
+    const size_t *input_indices_ptr;
+    ErrorSpec     error_spec;
+} ErrGraphNodeSpec;
+
+typedef struct ErrGraphSpec {
+    size_t                  num_nodes;
+    const ErrGraphNodeSpec *nodes_ptr;
+    const size_t           *execution_order_ptr;
+    size_t                  num_leaves;
+    const size_t           *leaf_indices_ptr;
+    uint32_t                store_node_outputs;
+} ErrGraphSpec;
+
 size_t felixGetLastError(uint8_t *out_buf, size_t out_buf_len);
 
 int felixSimulatePointSensors(
@@ -128,6 +144,34 @@ int felixSimulatePointSensorExperiments(
     double                  *out_errs_sys_ptr,
     double                  *out_errs_rand_ptr,
     double                  *out_errs_total_ptr,
+    double                  *out_pert_positions_ptr,
+    double                  *out_pert_times_ptr
+);
+
+int felixSimulateErrGraph(
+    const SimMeshInput      *mesh_in_ptr,
+    const SensorArrayInput  *sensor_in_ptr,
+    const ErrGraphSpec      *graph_spec_ptr,
+    const double            *truth_values_ptr,
+    double                  *out_measurements_ptr,
+    double                  *out_errs_sys_ptr,
+    double                  *out_errs_rand_ptr,
+    double                  *out_errs_total_ptr,
+    double                  *out_node_outputs_ptr
+);
+
+int felixSimulateErrGraphExperiments(
+    const SimMeshInput      *mesh_in_ptr,
+    const SensorArrayInput  *sensor_in_ptr,
+    const ErrGraphSpec      *graph_spec_ptr,
+    size_t                   num_experiments,
+    uint64_t                 seed,
+    const double            *truth_values_ptr,
+    double                  *out_measurements_ptr,
+    double                  *out_errs_sys_ptr,
+    double                  *out_errs_rand_ptr,
+    double                  *out_errs_total_ptr,
+    double                  *out_node_outputs_ptr,
     double                  *out_pert_positions_ptr,
     double                  *out_pert_times_ptr
 );
@@ -172,6 +216,34 @@ void felixPrintSensorData(
     size_t        sample_times_len,
     const double *spatial_dims_ptr,
     size_t        spatial_dims_len
+);
+
+typedef struct KernelSpec {
+    uint32_t kernel_type;
+    double   param0;
+    double   param1;
+    double   param2;
+} KernelSpec;
+
+typedef struct QuadSpec {
+    uint32_t rule;
+    size_t   order;
+    size_t   dims;
+} QuadSpec;
+
+int felixEvalWeightsBatch(
+    const KernelSpec *spec_ptr,
+    const double     *coords_ptr,
+    size_t            num_points,
+    size_t            dims,
+    double           *out_weights_ptr
+);
+
+int felixGenerateQuadNodesAndWeights(
+    const QuadSpec *spec_ptr,
+    double         *out_nodes_ptr,
+    double         *out_weights_ptr,
+    size_t         *out_count_ptr
 );
 
 #ifdef __cplusplus

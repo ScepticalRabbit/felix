@@ -6,7 +6,15 @@
 #
 # Authors: scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
-from felix.python.enums import EDim, EErrDep, EErrType, ERoundMethod
+from felix.python.enums import (
+    EDim,
+    EDifferentialMode,
+    EErrDep,
+    EErrType,
+    EIntegrationMode,
+    ERayMode,
+    ERoundMethod,
+)
 from felix.python.errspecs import (
     DriftConstant,
     DriftLinear,
@@ -35,6 +43,15 @@ from felix.python.errspecs import (
     IErrSimulator,
     IGenRandom,
 )
+from felix.python.errgraph import (
+    EErrOp,
+    ErrGraph,
+    ErrGraphBuilder,
+    ErrGraphOpts,
+    ErrNode,
+    SignalState,
+    err_chain_to_graph,
+)
 from felix.python.experimentstats import ExpSimStats, calc_exp_sim_stats
 from felix.python.experimentsimulator import (
     EExpSimPara,
@@ -52,6 +69,48 @@ from felix.python.fieldspecs import (
 from felix.python.sensordata import SensorData
 from felix.python.sensordescriptor import SensorDescriptor
 from felix.python.sensorspoint import ErrIntegrator, ISensorArray, SensorsPoint
+from felix.python.sensorsspatial import SensorsSpatial
+from felix.python.sensorsray import SensorsRay
+from felix.python.sensorsdifferential import SensorsDifferential
+from felix.python.spatialwindows import (
+    ISpatialWindow,
+    SpatialWindowBox,
+    SpatialWindowBox3D,
+    SpatialWindowCircle,
+    SpatialWindowCircle2D,
+    SpatialWindowLine,
+    SpatialWindowLine1D,
+    SpatialWindowPoint,
+    SpatialWindowRectangle,
+    SpatialWindowRect2D,
+    SpatialWindowSphere,
+    SpatialWindowSphere3D,
+)
+from felix.python.temporalwindows import (
+    ITemporalKernel,
+    ITemporalWindow,
+    TemporalWindowExponential,
+    TemporalWindowGaussian,
+    TemporalWindowInstant,
+    TemporalWindowRectangular,
+)
+from felix.python.spatialkernels import (
+    ISpatialKernel,
+    SpatialKernelCosine,
+    SpatialKernelCustom,
+    SpatialKernelEpanechnikov,
+    SpatialKernelGaussian,
+    SpatialKernelTriangular,
+    SpatialKernelUniform,
+)
+from felix.python.integrationrules import (
+    IIntegrationRule,
+    IntegrationGaussLegendre,
+    IntegrationMidpoint,
+    IntegrationMonteCarlo,
+    IntegrationSimpson,
+    IntegrationTrapezoidal,
+)
 from felix.python.sensortools import (
     gen_pos_cylinder,
     gen_pos_grid_boundary,

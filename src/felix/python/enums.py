@@ -28,3 +28,21 @@ class ERoundMethod(Enum):
     ROUND = auto()
     FLOOR = auto()
     CEIL = auto()
+
+
+class EIntegrationMode(Enum):
+    AVERAGE = auto()
+    ACCUMULATE = auto()
+
+
+class EDifferentialMode(Enum):
+    STRAIN = auto()
+    DIFFERENCE = auto()
+    RATIO = auto()
+    CUSTOM = auto()
+
+
+class ERayMode(Enum):
+    DISTANCE = auto()
+    SURFACE_FIELD = auto()
+    LINE_OF_SIGHT = auto()

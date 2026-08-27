@@ -14,6 +14,9 @@ const errors = @import("errors.zig");
 const random = @import("random.zig");
 const sensor_sim = @import("sensor_sim.zig");
 const stats = @import("stats.zig");
+const err_graph = @import("err_graph.zig");
+const kernels = @import("kernels.zig");
+const quadrature = @import("quadrature.zig");
 
 const F: type = f64;
 
@@ -204,6 +207,104 @@ pub export fn felixCalcExperimentStats(
     return 0;
 }
 
+pub export fn felixSimulateErrGraph(
+    mesh_in_ptr: [*c]const sensor_sim.SimMeshInput,
+    sensor_in_ptr: [*c]const sensor_sim.SensorArrayInput,
+    graph_spec_ptr: [*c]const err_graph.ErrGraphSpec,
+    truth_values_ptr: [*c]const F,
+    out_measurements_ptr: [*c]F,
+    out_errs_sys_ptr: [*c]F,
+    out_errs_rand_ptr: [*c]F,
+    out_errs_total_ptr: [*c]F,
+    out_node_outputs_ptr: [*c]F,
+) i32 {
+    if (mesh_in_ptr == null or sensor_in_ptr == null or
+        graph_spec_ptr == null or truth_values_ptr == null or
+        out_measurements_ptr == null)
+    {
+        setLastErrorSlice("Null pointer passed to felixSimulateErrGraph");
+        return -1;
+    }
+
+    err_graph.runErrGraphSimulation(
+        mesh_in_ptr,
+        sensor_in_ptr,
+        graph_spec_ptr,
+        truth_values_ptr,
+        out_measurements_ptr,
+        out_errs_sys_ptr,
+        out_errs_rand_ptr,
+        out_errs_total_ptr,
+        out_node_outputs_ptr,
+        0,
+    );
+    return 0;
+}
+
+pub export fn felixSimulateErrGraphExperiments(
+    mesh_in_ptr: [*c]const sensor_sim.SimMeshInput,
+    sensor_in_ptr: [*c]const sensor_sim.SensorArrayInput,
+    graph_spec_ptr: [*c]const err_graph.ErrGraphSpec,
+    num_experiments: usize,
+    seed: u64,
+    truth_values_ptr: [*c]const F,
+    out_measurements_ptr: [*c]F,
+    out_errs_sys_ptr: [*c]F,
+    out_errs_rand_ptr: [*c]F,
+    out_errs_total_ptr: [*c]F,
+    out_node_outputs_ptr: [*c]F,
+    out_pert_positions_ptr: [*c]F,
+    out_pert_times_ptr: [*c]F,
+) i32 {
+    if (mesh_in_ptr == null or sensor_in_ptr == null or
+        graph_spec_ptr == null or truth_values_ptr == null or
+        out_measurements_ptr == null)
+    {
+        setLastErrorSlice("Null pointer passed to felixSimulateErrGraphExperiments");
+        return -1;
+    }
+
+    const num_times = if (sensor_in_ptr[0].num_sample_times > 0)
+        sensor_in_ptr[0].num_sample_times
+    else
+        mesh_in_ptr[0].num_sim_times;
+    const result_len = sensor_in_ptr[0].num_sensors *
+        mesh_in_ptr[0].num_components * num_times;
+    const node_out_len = graph_spec_ptr[0].num_nodes * result_len;
+
+    for (0..num_experiments) |ee| {
+        const offset = ee * result_len;
+        const node_offset = ee * node_out_len;
+
+        err_graph.runErrGraphSimulation(
+            mesh_in_ptr,
+            sensor_in_ptr,
+            graph_spec_ptr,
+            truth_values_ptr,
+            out_measurements_ptr + offset,
+            if (out_errs_sys_ptr != null) out_errs_sys_ptr + offset else null,
+            if (out_errs_rand_ptr != null) out_errs_rand_ptr + offset else null,
+            if (out_errs_total_ptr != null) out_errs_total_ptr + offset else null,
+            if (out_node_outputs_ptr != null) out_node_outputs_ptr + node_offset else null,
+            seed +% @as(u64, @intCast(ee)),
+        );
+
+        if (out_pert_positions_ptr != null and sensor_in_ptr[0].work_positions_ptr != null) {
+            @memcpy(
+                (out_pert_positions_ptr + ee * sensor_in_ptr[0].num_sensors * 3)[0 .. sensor_in_ptr[0].num_sensors * 3],
+                sensor_in_ptr[0].work_positions_ptr[0 .. sensor_in_ptr[0].num_sensors * 3],
+            );
+        }
+        if (out_pert_times_ptr != null and sensor_in_ptr[0].work_times_ptr != null) {
+            @memcpy(
+                (out_pert_times_ptr + ee * num_times)[0..num_times],
+                sensor_in_ptr[0].work_times_ptr[0..num_times],
+            );
+        }
+    }
+    return 0;
+}
+
 pub export fn felixTransformVectors2D(
     rot_mat_22_ptr: [*c]const F,
     vx_in_ptr: [*c]const F,
@@ -325,4 +426,46 @@ pub export fn felixPrintSensorData(
     }
 
     std.debug.print("[Felix] ----------------------\n\n", .{});
+}
+
+pub export fn felixEvalWeightsBatch(
+    spec_ptr: [*c]const kernels.KernelSpec,
+    coords_ptr: [*c]const F,
+    num_points: usize,
+    dims: usize,
+    out_weights_ptr: [*c]F,
+) i32 {
+    if (spec_ptr == null or coords_ptr == null or out_weights_ptr == null) {
+        setLastErrorSlice("Null pointer passed to felixEvalWeightsBatch");
+        return -1;
+    }
+    kernels.evalWeightsBatch(
+        spec_ptr,
+        coords_ptr,
+        num_points,
+        dims,
+        out_weights_ptr,
+    );
+    return 0;
+}
+
+pub export fn felixGenerateQuadNodesAndWeights(
+    spec_ptr: [*c]const quadrature.QuadSpec,
+    out_nodes_ptr: [*c]F,
+    out_weights_ptr: [*c]F,
+    out_count_ptr: [*c]usize,
+) i32 {
+    if (spec_ptr == null or out_nodes_ptr == null or
+        out_weights_ptr == null or out_count_ptr == null)
+    {
+        setLastErrorSlice("Null pointer passed to felixGenerateQuadNodesAndWeights");
+        return -1;
+    }
+    const count = quadrature.generateNodesAndWeightsND(
+        spec_ptr,
+        out_nodes_ptr,
+        out_weights_ptr,
+    );
+    out_count_ptr[0] = count;
+    return 0;
 }
