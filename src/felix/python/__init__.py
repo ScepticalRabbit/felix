@@ -91,6 +91,7 @@ from felix.python.spatialwindows import (
 from felix.python.temporalwindows import (
     ITemporalKernel,
     ITemporalWindow,
+    TemporalKernelExponentialDecay,
     TemporalWindowExponential,
     TemporalWindowGaussian,
     TemporalWindowInstant,

@@ -50,7 +50,7 @@ sens_pos: np.ndarray = sens.gen_pos_grid_inside(num_sensors=(3,2,1),
                                                 y_lims=sim_dims["y"],
                                                 z_lims=(0.0,0.0))
 
-sample_times: np.ndarray = np.linspace(0.0,np.max(sim_data.time),50)
+sample_times: np.ndarray = np.linspace(0.0,np.max(sim_data.time),8)
 
 sens_data = sens.SensorData(positions=sens_pos,
                             sample_times=sample_times)
@@ -152,4 +152,3 @@ fig.savefig(output_path/"ext_ex3a_traces.png",dpi=300,bbox_inches="tight")
 #    :alt: Simulated sensor traces.
 #    :width: 600px
 #    :align: center
-

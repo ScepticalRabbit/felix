@@ -55,7 +55,7 @@ sensor_positions = np.array(((5.0,0.0,5.0),     # cube x-z face
                              (0.0,5.0,5.0),     # cube y-z face
                              (10.0,5.0,5.0),))  # cube y-z face
 
-sample_times = np.linspace(0.0,np.max(sim_data.time),50)
+sample_times = np.linspace(0.0,np.max(sim_data.time),8)
 
 sens_data = sens.SensorData(positions=sensor_positions,
                             sample_times=sample_times)

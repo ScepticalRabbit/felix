@@ -58,7 +58,7 @@ for ss,kk in zip(sim_paths,sim_keys):
 # 2.1 Build scalar field sensor array
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-sample_times = np.linspace(0.0,np.max(sim_data.time),50)
+sample_times = np.linspace(0.0,np.max(sim_data.time),8)
 
 temp_sens_pos: np.ndarray = sens.gen_pos_grid_inside(num_sensors=(1,4,1),
                                                      x_lims=(12.5,12.5),
@@ -168,7 +168,7 @@ exp_sim = sens.ExperimentSimulator(sim_data_dict,
 
 start_exp: float = time.perf_counter()
 exp_data: dict[tuple[str,...],np.ndarray] = (
-    exp_sim.run_experiments(num_exp_per_sim=1000)
+    exp_sim.run_experiments(num_exp_per_sim=5)
 )
 exp_time: float = time.perf_counter() - start_exp
 

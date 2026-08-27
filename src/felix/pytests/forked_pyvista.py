@@ -135,6 +135,7 @@ def _run_isolated_item(
     ]
     environment = os.environ.copy()
     environment[VTK_CHILD_ENV] = "1"
+    environment["PYTHONUNBUFFERED"] = "1"
 
     process = subprocess.Popen(
         command,

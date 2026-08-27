@@ -57,7 +57,7 @@ for ss,kk in zip(sim_paths,sim_keys):
 # Here we build a scalar field sensor array to simulate thermocouples applied to
 # our simulation in a similar way to what we have seen in previous examples.
 
-sample_times = np.linspace(0.0,np.max(sim_data.time),50)
+sample_times = np.linspace(0.0,np.max(sim_data.time),8)
 
 temp_sens_pos: np.ndarray = sens.gen_pos_grid_inside(num_sensors=(1,4,1),
                                                      x_lims=(12.5,12.5),
@@ -220,7 +220,7 @@ exp_sim = sens.ExperimentSimulator(sim_data_dict,
 
 
 exp_data: dict[tuple[str,...],np.ndarray] = (
-    exp_sim.run_experiments(num_exp_per_sim=100)
+    exp_sim.run_experiments(num_exp_per_sim=5)
 )
 exp_stats: dict[tuple[str,...],sens.ExpSimStats] = (
     sens.calc_exp_sim_stats(exp_data)

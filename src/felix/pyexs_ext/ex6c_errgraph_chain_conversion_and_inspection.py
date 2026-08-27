@@ -50,12 +50,12 @@ sens_pos = sens.gen_pos_grid_inside(
     y_lims=sim_dims["y"],
     z_lims=(0.0, 0.0),
 )
-sample_times = np.linspace(0.0, float(np.max(sim_data.time)), 50)
+sample_times = np.linspace(0.0, float(np.max(sim_data.time)), 8)
 sens_data = sens.SensorData(positions=sens_pos, sample_times=sample_times)
 
 sens_array: sens.SensorsPoint = sens.SensorFactory.scalar_point(
     sim_data=sim_data,
-    sensor_data=sens_data,
+        sens_data=sens_data,
     comp_key="temperature",
     spatial_dims=sens.EDim.TWOD,
     descriptor=sens.DescriptorFactory.temperature(),

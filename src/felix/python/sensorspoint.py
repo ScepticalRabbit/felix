@@ -25,7 +25,10 @@ class ErrIntegrator:
         "_errs_systematic",
         "_errs_random",
         "_errs_total",
+        "_errs_by_chain",
         "_sens_data_accumulated",
+        "_sens_data_by_chain",
+        "_sens_data_initial",
     )
 
     def __init__(
@@ -52,10 +55,22 @@ class ErrIntegrator:
         self._errs_systematic = None
         self._errs_random = None
         self._errs_total = None
+        self._errs_by_chain = None
+        self._sens_data_by_chain = None
+        self._sens_data_initial = deepcopy(s_data)
         self._sens_data_accumulated = deepcopy(s_data)
 
     def get_sens_data_accumulated(self) -> SensorData:
         return self._sens_data_accumulated
+
+    def get_sens_data_initial(self) -> SensorData:
+        return self._sens_data_initial
+
+    def get_sens_data_by_chain(self) -> list[SensorData] | None:
+        return self._sens_data_by_chain
+
+    def get_errs_by_chain(self) -> np.ndarray | None:
+        return self._errs_by_chain
 
     def get_errs_systematic(self) -> np.ndarray | None:
         return self._errs_systematic

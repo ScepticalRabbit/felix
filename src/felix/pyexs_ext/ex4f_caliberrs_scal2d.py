@@ -58,7 +58,7 @@ def calib_truth_prime(signal: np.ndarray) -> np.ndarray:
 # calibration. For our true calibration we know this holds between 0 and 6mV
 # so we perform the calculation over this range and print the min/max
 # expected error over this range.
-n_cal_divs = 10000
+n_cal_divs = 256
 signal_calib_range = np.array((0.0, 6.0), dtype=np.float64)
 milli_volts = np.linspace(
     signal_calib_range[0], signal_calib_range[1], n_cal_divs
@@ -101,7 +101,7 @@ sens_pos = sens.gen_pos_grid_inside(
     z_lims=(0.0, 0.0),
 )
 
-sample_times = np.linspace(0.0, float(np.max(sim_data.time)), 50)
+sample_times = np.linspace(0.0, float(np.max(sim_data.time)), 8)
 sens_data = sens.SensorData(positions=sens_pos, sample_times=sample_times)
 
 sens_array: sens.SensorsPoint = sens.SensorFactory.scalar_point(

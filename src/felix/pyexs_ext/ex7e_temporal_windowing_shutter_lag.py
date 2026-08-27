@@ -48,7 +48,7 @@ sim_data = sens.scale_length_units(
 # 2. Configure temporal sensors
 # -----------------------------
 pos = np.array([[10.0, 15.0, 0.0]])
-sample_times = np.linspace(0.1, 1.0, 20)
+sample_times = np.linspace(0.1, 1.0, 8)
 
 sens_data = sens.SensorData(positions=pos, sample_times=sample_times)
 field = sens.FieldScalar(
@@ -64,18 +64,18 @@ sensor_instant = sens.SensorsSpatial(
     temporal_window=sens.TemporalWindowInstant(),
 )
 
-# B: Camera shutter exposure (centered window duration = 0.08 s)
+# B: Camera shutter exposure (window duration = 0.08 s)
 sensor_shutter = sens.SensorsSpatial(
     sensor_data=sens_data,
     field=field,
-    temporal_window=sens.TemporalWindowCentered(duration=0.08),
+    temporal_window=sens.TemporalWindowRectangular(duration=0.08),
 )
 
 # C: Thermocouple with thermal lag (tau = 0.05 s, duration = 0.15 s)
 sensor_lag = sens.SensorsSpatial(
     sensor_data=sens_data,
     field=field,
-    temporal_window=sens.TemporalWindowCausal(
+    temporal_window=sens.TemporalWindowRectangular(
         duration=0.15,
         kernel=sens.TemporalKernelExponentialDecay(time_constant=0.05),
     ),

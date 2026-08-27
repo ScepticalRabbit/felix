@@ -78,7 +78,7 @@ center_pos = np.array([[10.0, 15.0, 0.0]])
 sens_data_pt = sens.SensorData(positions=center_pos)
 point_sensor = sens.SensorFactory.scalar_point(
     sim_data=sim_data,
-    sensor_data=sens_data_pt,
+    sens_data=sens_data_pt,
     comp_key="temperature",
     spatial_dims=sens.EDim.TWOD,
 )
@@ -153,7 +153,7 @@ pv_plot = sens.plot_sensors_on_sim(
 if show_plots:
     pv_plot.show()
 else:
-pv_plot.close()
+    pv_plot.close()
 
 # %%
 # .. image:: ../../../../_static/ext_ex7a_fiber_lines.png

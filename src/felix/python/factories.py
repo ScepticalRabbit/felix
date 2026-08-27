@@ -6,6 +6,8 @@
 #
 # Authors: scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
+import numpy as np
+
 from pyvale.dataio.simdata import SimData
 
 from felix.python.enums import EDim
@@ -13,9 +15,37 @@ from felix.python.fieldspecs import FieldScalar, FieldTensor, FieldVector
 from felix.python.sensordata import SensorData
 from felix.python.sensordescriptor import SensorDescriptor
 from felix.python.sensorspoint import SensorsPoint
+from felix.python.sensorsspatial import SensorsSpatial
+from felix.python.spatialwindows import SpatialWindowLine
 
 
 class SensorFactory:
+    @staticmethod
+    def line_from_endpoints(
+        sim_data: SimData,
+        point_start: tuple[float, ...] | np.ndarray,
+        point_end: tuple[float, ...] | np.ndarray,
+        comp_key: str,
+        spatial_dims: EDim = EDim.THREED,
+        descriptor: SensorDescriptor | None = None,
+    ) -> SensorsSpatial:
+        start = np.asarray(point_start, dtype=float)
+        end = np.asarray(point_end, dtype=float)
+        delta = end - start
+        length = float(np.linalg.norm(delta))
+        if length == 0.0:
+            raise ValueError("line sensor endpoints must be distinct")
+
+        sens_data = SensorData(positions=((start + end) / 2.0)[None, :])
+        field = FieldScalar(sim_data, comp_key, spatial_dims)
+        window = SpatialWindowLine(length=length, axis=delta / length)
+        return SensorsSpatial(
+            sensor_data=sens_data,
+            field=field,
+            spatial_window=window,
+            descriptor=descriptor,
+        )
+
     @staticmethod
     def scalar_point(
         sim_data: SimData,

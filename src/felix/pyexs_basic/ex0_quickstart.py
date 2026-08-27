@@ -86,7 +86,7 @@ exp_sim_opts = sens.ExpSimOpts(workers=4,para=sens.EExpSimPara.ALL)
 exp_sim = sens.ExperimentSimulator(sims,sensors,exp_sim_opts)
 
 exp_data: dict[tuple[str,...],np.ndarray] = (
-    exp_sim.run_experiments(num_exp_per_sim=100)
+    exp_sim.run_experiments(num_exp_per_sim=5)
 )
 
 exp_stats: dict[tuple[str,...],sens.ExpSimStats] = (

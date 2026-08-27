@@ -72,7 +72,7 @@ sens_data = sens.SensorData(
 gauge_window = sens.SpatialWindowRectangle(
     length_x=3.0,
     length_y=2.0,
-    integ_rule=sens.IntegrationGaussLegendre(order=3),
+    rule=sens.IntegrationGaussLegendre(order=3),
 )
 
 strain_field = sens.FieldTensor(
@@ -171,7 +171,7 @@ pv_plot = sens.plot_sensors_on_sim(
 if show_plots:
     pv_plot.show()
 else:
-pv_plot.close()
+    pv_plot.close()
 
 # %%
 # .. image:: ../../../../_static/ext_ex7b_strain_rosette.png
