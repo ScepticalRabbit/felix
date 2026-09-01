@@ -18,6 +18,7 @@ import pyvale.sensorsim as ps
 import felix as fs
 from pyvale.dataio.simdata import SimData, EMeshType
 
+
 from bench.benchparams import (
     SENSORS_NUM,
     SIM_TIMES_NUM,
