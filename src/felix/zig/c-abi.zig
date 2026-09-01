@@ -111,6 +111,37 @@ pub export fn felixSimulatePointSensors(
     return 0;
 }
 
+pub export fn felixBindSensorsToMesh(
+    mesh_in_ptr: [*c]const sensor_sim.SimMeshInput,
+    positions_ptr: [*c]const F,
+    num_sensors: usize,
+    out_binding_ptr: *sensor_sim.SensorMeshBinding,
+) i32 {
+    if (mesh_in_ptr == null or positions_ptr == null) {
+        setLastErrorSlice("Null pointer passed to felixBindSensorsToMesh");
+        return -1;
+    }
+    const alloc = std.heap.smp_allocator;
+    sensor_sim.bindSensorsToMesh(
+        alloc,
+        mesh_in_ptr,
+        positions_ptr,
+        num_sensors,
+        out_binding_ptr,
+    ) catch |err| {
+        setLastErrorSlice(@errorName(err));
+        return -1;
+    };
+    return 0;
+}
+
+pub export fn felixFreeSensorMeshBinding(
+    binding_ptr: *sensor_sim.SensorMeshBinding,
+) void {
+    const alloc = std.heap.smp_allocator;
+    sensor_sim.freeSensorMeshBinding(alloc, binding_ptr);
+}
+
 pub export fn felixSimulatePointSensorExperiments(
     mesh_in_ptr: [*c]const sensor_sim.SimMeshInput,
     sensor_in_ptr: [*c]const sensor_sim.SensorArrayInput,

@@ -8,6 +8,7 @@
 // --------------------------------------------------------------------------------------
 const std = @import("std");
 const common = @import("sensor_sim_common.zig");
+const elements = @import("elements.zig");
 const mesh_interp = @import("mesh_interp.zig");
 const transforms = @import("transforms.zig");
 const errors = @import("errors.zig");
@@ -49,36 +50,57 @@ pub fn runSensorSimulation(
     const elem_type: ElementType = @enumFromInt(mesh_in.elem_type);
 
     for (0..num_sensors) |ss| {
-        const px = sensor_in.positions_ptr[ss * 3 + 0];
-        const py = sensor_in.positions_ptr[ss * 3 + 1];
-        const pz = sensor_in.positions_ptr[ss * 3 + 2];
+        var is_found: bool = false;
+        var node_count: usize = 0;
+        var node_indices: [elements.max_elem_nodes]usize = undefined;
+        var weights: [elements.max_elem_nodes]F = undefined;
 
-        var loc: SensorLocation = undefined;
-        mesh_interp.locatePointInMesh(
-            mesh_in.coords_ptr,
-            mesh_in.connect_ptr,
-            mesh_in.num_elements,
-            elem_type,
-            px,
-            py,
-            pz,
-            &loc,
-        );
+        if (sensor_in.binding_ptr) |b| {
+            is_found = b.found_mask_ptr[ss] != 0;
+            node_count = b.node_counts_ptr[ss];
+            const base_node_offset = ss * elements.max_elem_nodes;
+            for (0..node_count) |nn| {
+                node_indices[nn] = b.node_indices_ptr[base_node_offset + nn];
+                weights[nn] = b.weights_ptr[base_node_offset + nn];
+            }
+        } else {
+            const px = sensor_in.positions_ptr[ss * 3 + 0];
+            const py = sensor_in.positions_ptr[ss * 3 + 1];
+            const pz = sensor_in.positions_ptr[ss * 3 + 2];
+
+            var loc: SensorLocation = undefined;
+            mesh_interp.locatePointInMesh(
+                mesh_in.coords_ptr,
+                mesh_in.connect_ptr,
+                mesh_in.num_elements,
+                elem_type,
+                px,
+                py,
+                pz,
+                &loc,
+            );
+            is_found = loc.found;
+            node_count = loc.node_count;
+            for (0..node_count) |nn| {
+                node_indices[nn] = loc.node_indices[nn];
+                weights[nn] = loc.weights[nn];
+            }
+        }
 
         const sens_base_idx = ss * (num_comps * num_out_times);
 
         for (0..num_comps) |cc| {
             const comp_out_ptr = out_truth + sens_base_idx + cc * num_out_times;
 
-            if (!loc.found) {
+            if (!is_found) {
                 @memset(comp_out_ptr[0..num_out_times], 0.0);
                 continue;
             }
 
             @memset(sim_time_buf[0..num_sim_times], 0.0);
-            for (0..loc.node_count) |nn| {
-                const weight_val = loc.weights[nn];
-                const node_id = loc.node_indices[nn];
+            for (0..node_count) |nn| {
+                const weight_val = weights[nn];
+                const node_id = node_indices[nn];
                 const node_offset = node_id * (num_comps * num_sim_times) + cc * num_sim_times;
                 const node_data = mesh_in.nodal_fields_ptr + node_offset;
 

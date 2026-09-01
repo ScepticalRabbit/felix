@@ -26,6 +26,9 @@ pub const SensorArrayInput = common.SensorArrayInput;
 pub const ErrorSpec = common.ErrorSpec;
 pub const ElementType = common.ElementType;
 pub const SensorLocation = common.SensorLocation;
+pub const SensorMeshBinding = common.SensorMeshBinding;
+pub const bindSensorsToMesh = common.bindSensorsToMesh;
+pub const freeSensorMeshBinding = common.freeSensorMeshBinding;
 
 // --------------------------------------------------------------------------------------
 // Public Simulation Execution

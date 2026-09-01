@@ -15,7 +15,62 @@ import numpy as np
 
 from felix.cython cimport felix as cf
 
-cnp.import_array()
+cdef class PySensorMeshBinding:
+    cdef cf.SensorMeshBinding binding
+    cdef bint is_allocated
+
+    def __cinit__(self):
+        self.is_allocated = False
+
+    def __dealloc__(self):
+        if self.is_allocated:
+            cf.felixFreeSensorMeshBinding(&self.binding)
+            self.is_allocated = False
+
+    @property
+    def num_sensors(self) -> int:
+        return self.binding.num_sensors
+
+
+def bind_sensors_to_mesh(
+    cnp.ndarray coords,
+    cnp.ndarray connect,
+    int elem_type,
+    cnp.ndarray positions,
+):
+    """Binds sensor positions to mesh elements once for fast sampling."""
+    cdef cnp.ndarray[double, ndim=2, mode="c"] coords_c = np.ascontiguousarray(
+        coords, dtype=np.float64
+    )
+    cdef cnp.ndarray[size_t, ndim=2, mode="c"] connect_c = np.ascontiguousarray(
+        connect, dtype=np.uint64
+    )
+    cdef cnp.ndarray[double, ndim=2, mode="c"] pos_c = np.ascontiguousarray(
+        positions, dtype=np.float64
+    )
+
+    cdef cf.SimMeshInput mesh_in
+    mesh_in.coords_ptr = <const double *>coords_c.data
+    mesh_in.num_nodes = coords_c.shape[0]
+    mesh_in.connect_ptr = <const size_t *>connect_c.data
+    mesh_in.num_elements = connect_c.shape[0]
+    mesh_in.elem_type = <uint32_t>elem_type
+    mesh_in.nodal_fields_ptr = NULL
+    mesh_in.num_components = 0
+    mesh_in.sim_times_ptr = NULL
+    mesh_in.num_sim_times = 0
+
+    cdef PySensorMeshBinding py_bind = PySensorMeshBinding()
+    cdef int status = cf.felixBindSensorsToMesh(
+        &mesh_in,
+        <const double *>pos_c.data,
+        pos_c.shape[0],
+        &py_bind.binding,
+    )
+    if status != 0:
+        raise RuntimeError(f"Failed to bind sensors to mesh: {get_last_error()}")
+    py_bind.is_allocated = True
+    return py_bind
 
 
 def sample_field_config(
@@ -26,6 +81,7 @@ def sample_field_config(
     list error_specs_list=None,
     size_t num_experiments=1,
     uint64_t experiment_seed=0,
+    object binding=None,
 ):
     """Marshal a Felix field configuration and execute it in Zig."""
     sim_data = field.get_sim_data()
@@ -102,6 +158,7 @@ def sample_field_config(
         error_specs_list=error_specs_list,
         num_experiments=num_experiments,
         experiment_seed=experiment_seed,
+        binding=binding,
     )
 
 
@@ -204,6 +261,7 @@ def simulate_point_sensors(
     list error_specs_list=None,
     size_t num_experiments=1,
     uint64_t experiment_seed=0,
+    object binding=None,
 ):
     """Run full point sensor simulation in Zig."""
     cdef cnp.ndarray[double, ndim=2, mode="c"] coords_c = np.ascontiguousarray(
@@ -293,6 +351,13 @@ def simulate_point_sensors(
     sensor_in.scratch_positions_ptr = <double *>scratch_pos.data
     sensor_in.scratch_times_ptr = <double *>scratch_times.data
     sensor_in.scratch_rot_matrices_ptr = <double *>scratch_rots.data
+
+    cdef PySensorMeshBinding py_binding_obj
+    if binding is not None and isinstance(binding, PySensorMeshBinding):
+        py_binding_obj = <PySensorMeshBinding>binding
+        sensor_in.binding_ptr = &py_binding_obj.binding
+    else:
+        sensor_in.binding_ptr = NULL
 
     # Build ErrorSpec array
     cdef size_t num_errors = 0

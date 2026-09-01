@@ -105,4 +105,48 @@ test "Scalar point sensor simulation on HEX8 cube mesh" {
             common.isApproxEqual(out_truth[ii], out_meas[ii], tcfg.REL_TOL, tcfg.ABS_TOL),
         );
     }
+
+    // Verify SensorMeshBinding precomputation gives identical results
+    var binding: sensor_sim.SensorMeshBinding = undefined;
+    try sensor_sim.bindSensorsToMesh(
+        allocator,
+        &mesh_in,
+        sensor_in.positions_ptr,
+        num_sensors,
+        &binding,
+    );
+    defer sensor_sim.freeSensorMeshBinding(allocator, &binding);
+
+    var sensor_in_bound = sensor_in;
+    sensor_in_bound.binding_ptr = &binding;
+
+    const out_truth_bound = try allocator.alloc(F, num_sensors * 1 * num_sim_times);
+    defer allocator.free(out_truth_bound);
+
+    const out_meas_bound = try allocator.alloc(F, num_sensors * 1 * num_sim_times);
+    defer allocator.free(out_meas_bound);
+
+    sensor_sim.runSensorSimulation(
+        &mesh_in,
+        &sensor_in_bound,
+        null,
+        0,
+        out_truth_bound.ptr,
+        out_meas_bound.ptr,
+        null,
+        null,
+        null,
+        0,
+    );
+
+    for (0..out_truth.len) |ii| {
+        try std.testing.expect(
+            common.isApproxEqual(
+                out_truth[ii],
+                out_truth_bound[ii],
+                tcfg.REL_TOL,
+                tcfg.ABS_TOL,
+            ),
+        );
+    }
 }

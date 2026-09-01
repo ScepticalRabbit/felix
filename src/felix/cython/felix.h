@@ -38,6 +38,15 @@ typedef struct SimMeshInput {
     size_t        num_sim_times;
 } SimMeshInput;
 
+typedef struct SensorMeshBinding {
+    size_t        num_sensors;
+    const uint8_t *found_mask_ptr;
+    const size_t *elem_indices_ptr;
+    const size_t *node_counts_ptr;
+    const size_t *node_indices_ptr;
+    const double *weights_ptr;
+} SensorMeshBinding;
+
 typedef struct SensorArrayInput {
     const double *positions_ptr;
     size_t        num_sensors;
@@ -53,6 +62,7 @@ typedef struct SensorArrayInput {
     double       *scratch_positions_ptr;
     double       *scratch_times_ptr;
     double       *scratch_rot_matrices_ptr;
+    const SensorMeshBinding *binding_ptr;
 } SensorArrayInput;
 
 typedef struct DistributionSpec {
@@ -119,6 +129,17 @@ typedef struct ErrGraphSpec {
 } ErrGraphSpec;
 
 size_t felixGetLastError(uint8_t *out_buf, size_t out_buf_len);
+
+int felixBindSensorsToMesh(
+    const SimMeshInput      *mesh_in_ptr,
+    const double            *positions_ptr,
+    size_t                   num_sensors,
+    SensorMeshBinding       *out_binding_ptr
+);
+
+void felixFreeSensorMeshBinding(
+    SensorMeshBinding       *binding_ptr
+);
 
 int felixSimulatePointSensors(
     const SimMeshInput      *mesh_in_ptr,

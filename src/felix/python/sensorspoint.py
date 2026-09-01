@@ -113,6 +113,7 @@ class SensorsPoint:
         "_err_graph",
         "_truth",
         "_measurements",
+        "_binding",
     )
 
     def __init__(
@@ -128,6 +129,65 @@ class SensorsPoint:
         self._err_graph = None
         self._truth = None
         self._measurements = None
+        self._binding = None
+        self._bind()
+
+    def _bind(self) -> None:
+        if self._sensor_data.positions is None:
+            self._binding = None
+            return
+        sim_data_fn = getattr(self._field, "get_sim_data", None)
+        if sim_data_fn is None:
+            self._binding = None
+            return
+        sd = sim_data_fn()
+        connect = getattr(sd, "connect", None)
+        coords = getattr(sd, "coords", None)
+        if connect is None or coords is None:
+            self._binding = None
+            return
+        if isinstance(connect, dict):
+            connect_arr = np.vstack(tuple(connect.values()))
+        else:
+            connect_arr = connect
+        spatial_dims = getattr(self._field, "_spatial_dims", 3)
+        is_2d = getattr(spatial_dims, "value", spatial_dims) == 2
+        num_nodes = connect_arr.shape[1]
+        if is_2d:
+            if num_nodes in (8, 9):
+                elem_type = 5
+                connect_arr = connect_arr[:, :8]
+            elif num_nodes == 6:
+                elem_type = 0
+                connect_arr = connect_arr[:, :3]
+            elif num_nodes == 4:
+                elem_type = 1
+            else:
+                elem_type = 0
+        else:
+            if num_nodes in (20, 27):
+                elem_type = 6
+                connect_arr = connect_arr[:, :20]
+            elif num_nodes == 10:
+                elem_type = 2
+                connect_arr = connect_arr[:, :4]
+            elif num_nodes == 8:
+                elem_type = 3
+            else:
+                elem_type = 2
+        try:
+            self._binding = fc.bind_sensors_to_mesh(
+                coords=coords,
+                connect=connect_arr,
+                elem_type=elem_type,
+                positions=self._sensor_data.positions,
+            )
+        except Exception:
+            self._binding = None
+
+    def rebind(self) -> None:
+        """Rebind sensor locations to the mesh."""
+        self._bind()
 
     def get_field(self) -> FieldSpec:
         return self._field
@@ -289,6 +349,7 @@ class SensorsPoint:
             specs,
             num_experiments,
             seed,
+            binding=self._binding,
         )
 
     def _simulate(self, specs: list[dict] | None) -> tuple[np.ndarray, ...]:
@@ -325,6 +386,7 @@ class SensorsPoint:
             self._sensor_data.sample_times,
             self._sensor_data.angles,
             specs,
+            binding=self._binding,
         )
 
 

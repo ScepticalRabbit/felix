@@ -13,6 +13,7 @@ const mesh_interp = @import("mesh_interp.zig");
 const transforms = @import("transforms.zig");
 const errors = @import("errors.zig");
 const random = @import("random.zig");
+const spatial_grid = @import("spatial_grid.zig");
 
 pub const F = buildconfig.F;
 pub const SimdWidth = buildconfig.SimdWidth;
@@ -38,6 +39,15 @@ pub const SimMeshInput = extern struct {
     num_sim_times: usize,
 };
 
+pub const SensorMeshBinding = extern struct {
+    num_sensors: usize,
+    found_mask_ptr: [*c]const u8,
+    elem_indices_ptr: [*c]const usize,
+    node_counts_ptr: [*c]const usize,
+    node_indices_ptr: [*c]const usize,
+    weights_ptr: [*c]const F,
+};
+
 pub const SensorArrayInput = extern struct {
     positions_ptr: [*c]const F,
     num_sensors: usize,
@@ -53,7 +63,113 @@ pub const SensorArrayInput = extern struct {
     scratch_positions_ptr: [*c]F,
     scratch_times_ptr: [*c]F,
     scratch_rot_matrices_ptr: [*c]F,
+    binding_ptr: ?*const SensorMeshBinding = null,
 };
+
+pub fn bindSensorsToMesh(
+    outer_alloc: std.mem.Allocator,
+    mesh_in: *const SimMeshInput,
+    positions_ptr: [*c]const F,
+    num_sensors: usize,
+    out_binding: *SensorMeshBinding,
+) !void {
+    const elem_type: ElementType = @enumFromInt(mesh_in.elem_type);
+
+    const found_mask = try outer_alloc.alloc(u8, num_sensors);
+    errdefer outer_alloc.free(found_mask);
+
+    const elem_indices = try outer_alloc.alloc(usize, num_sensors);
+    errdefer outer_alloc.free(elem_indices);
+
+    const node_counts = try outer_alloc.alloc(usize, num_sensors);
+    errdefer outer_alloc.free(node_counts);
+
+    const node_indices = try outer_alloc.alloc(
+        usize,
+        num_sensors * elements.max_elem_nodes,
+    );
+    errdefer outer_alloc.free(node_indices);
+
+    const weights = try outer_alloc.alloc(
+        F,
+        num_sensors * elements.max_elem_nodes,
+    );
+    errdefer outer_alloc.free(weights);
+
+    @memset(node_indices, 0);
+    @memset(weights, 0.0);
+
+    var grid = try spatial_grid.UniformVoxelGrid.init(
+        outer_alloc,
+        mesh_in.coords_ptr,
+        mesh_in.connect_ptr,
+        mesh_in.num_elements,
+        elem_type,
+    );
+    defer grid.deinit(outer_alloc);
+
+    for (0..num_sensors) |ss| {
+        const px = positions_ptr[ss * 3 + 0];
+        const py = positions_ptr[ss * 3 + 1];
+        const pz = positions_ptr[ss * 3 + 2];
+
+        var loc: SensorLocation = undefined;
+        grid.locatePoint(
+            mesh_in.coords_ptr,
+            mesh_in.connect_ptr,
+            elem_type,
+            px,
+            py,
+            pz,
+            &loc,
+        );
+
+        found_mask[ss] = if (loc.found) 1 else 0;
+        elem_indices[ss] = loc.elem_idx;
+        node_counts[ss] = loc.node_count;
+
+        const base_node_offset = ss * elements.max_elem_nodes;
+        for (0..loc.node_count) |nn| {
+            node_indices[base_node_offset + nn] = loc.node_indices[nn];
+            weights[base_node_offset + nn] = loc.weights[nn];
+        }
+    }
+
+    out_binding.* = SensorMeshBinding{
+        .num_sensors = num_sensors,
+        .found_mask_ptr = found_mask.ptr,
+        .elem_indices_ptr = elem_indices.ptr,
+        .node_counts_ptr = node_counts.ptr,
+        .node_indices_ptr = node_indices.ptr,
+        .weights_ptr = weights.ptr,
+    };
+}
+
+pub fn freeSensorMeshBinding(
+    outer_alloc: std.mem.Allocator,
+    binding: *SensorMeshBinding,
+) void {
+    if (binding.found_mask_ptr != null) {
+        outer_alloc.free(binding.found_mask_ptr[0..binding.num_sensors]);
+    }
+    if (binding.elem_indices_ptr != null) {
+        outer_alloc.free(binding.elem_indices_ptr[0..binding.num_sensors]);
+    }
+    if (binding.node_counts_ptr != null) {
+        outer_alloc.free(binding.node_counts_ptr[0..binding.num_sensors]);
+    }
+    if (binding.node_indices_ptr != null) {
+        outer_alloc.free(
+            binding.node_indices_ptr[0 .. binding.num_sensors * elements.max_elem_nodes],
+        );
+    }
+    if (binding.weights_ptr != null) {
+        outer_alloc.free(
+            binding.weights_ptr[0 .. binding.num_sensors * elements.max_elem_nodes],
+        );
+    }
+    binding.* = std.mem.zeroes(SensorMeshBinding);
+}
 
 // --------------------------------------------------------------------------------------
 // Perturbation & Sampling Helpers

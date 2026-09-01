@@ -110,104 +110,16 @@ pub fn locatePointInMesh(
         }
 
         var inv_res: InverseResult = undefined;
-        inv_res.inside = false;
-
-        switch (elem_type) {
-            .tri3 => {
-                var node_x: [3]F = undefined;
-                var node_y: [3]F = undefined;
-                for (0..3) |nn| {
-                    const nid = elem_connect[nn];
-                    node_x[nn] = coords_ptr[nid * 3 + 0];
-                    node_y[nn] = coords_ptr[nid * 3 + 1];
-                }
-                elements.invertTri3(&node_x, &node_y, targ_x, targ_y, tol_eps, &inv_res);
-            },
-            .quad4 => {
-                var node_x: [4]F = undefined;
-                var node_y: [4]F = undefined;
-                for (0..4) |nn| {
-                    const nid = elem_connect[nn];
-                    node_x[nn] = coords_ptr[nid * 3 + 0];
-                    node_y[nn] = coords_ptr[nid * 3 + 1];
-                }
-                elements.invertQuad4(&node_x, &node_y, targ_x, targ_y, tol_eps, &inv_res);
-            },
-            .tet4 => {
-                var node_x: [4]F = undefined;
-                var node_y: [4]F = undefined;
-                var node_z: [4]F = undefined;
-                for (0..4) |nn| {
-                    const nid = elem_connect[nn];
-                    node_x[nn] = coords_ptr[nid * 3 + 0];
-                    node_y[nn] = coords_ptr[nid * 3 + 1];
-                    node_z[nn] = coords_ptr[nid * 3 + 2];
-                }
-                elements.invertTet4(
-                    &node_x,
-                    &node_y,
-                    &node_z,
-                    targ_x,
-                    targ_y,
-                    targ_z,
-                    tol_eps,
-                    &inv_res,
-                );
-            },
-            .hex8 => {
-                var node_x: [8]F = undefined;
-                var node_y: [8]F = undefined;
-                var node_z: [8]F = undefined;
-                for (0..8) |nn| {
-                    const nid = elem_connect[nn];
-                    node_x[nn] = coords_ptr[nid * 3 + 0];
-                    node_y[nn] = coords_ptr[nid * 3 + 1];
-                    node_z[nn] = coords_ptr[nid * 3 + 2];
-                }
-                elements.invertHex8(
-                    &node_x,
-                    &node_y,
-                    &node_z,
-                    targ_x,
-                    targ_y,
-                    targ_z,
-                    tol_eps,
-                    &inv_res,
-                );
-            },
-            .quad8 => {
-                var node_x: [8]F = undefined;
-                var node_y: [8]F = undefined;
-                for (0..8) |nn| {
-                    const nid = elem_connect[nn];
-                    node_x[nn] = coords_ptr[nid * 3 + 0];
-                    node_y[nn] = coords_ptr[nid * 3 + 1];
-                }
-                elements.invertQuad8(&node_x, &node_y, targ_x, targ_y, tol_eps, &inv_res);
-            },
-            .hex20 => {
-                var node_x: [20]F = undefined;
-                var node_y: [20]F = undefined;
-                var node_z: [20]F = undefined;
-                for (0..20) |nn| {
-                    const nid = elem_connect[nn];
-                    node_x[nn] = coords_ptr[nid * 3 + 0];
-                    node_y[nn] = coords_ptr[nid * 3 + 1];
-                    node_z[nn] = coords_ptr[nid * 3 + 2];
-                }
-                elements.invertHex20(
-                    &node_x,
-                    &node_y,
-                    &node_z,
-                    targ_x,
-                    targ_y,
-                    targ_z,
-                    tol_eps,
-                    &inv_res,
-                );
-            },
-            else => {},
-        }
+        invertElementDirect(
+            coords_ptr,
+            elem_connect,
+            elem_type,
+            targ_x,
+            targ_y,
+            targ_z,
+            tol_eps,
+            &inv_res,
+        );
 
         if (inv_res.inside) {
             out_location.found = true;
@@ -219,5 +131,115 @@ pub fn locatePointInMesh(
             }
             return;
         }
+    }
+}
+
+pub fn invertElementDirect(
+    coords_ptr: [*c]const F,
+    elem_connect: []const usize,
+    elem_type: ElementType,
+    targ_x: F,
+    targ_y: F,
+    targ_z: F,
+    tol_eps: F,
+    out_inv_res: *InverseResult,
+) void {
+    out_inv_res.inside = false;
+
+    switch (elem_type) {
+        .tri3 => {
+            var node_x: [3]F = undefined;
+            var node_y: [3]F = undefined;
+            for (0..3) |nn| {
+                const nid = elem_connect[nn];
+                node_x[nn] = coords_ptr[nid * 3 + 0];
+                node_y[nn] = coords_ptr[nid * 3 + 1];
+            }
+            elements.invertTri3(&node_x, &node_y, targ_x, targ_y, tol_eps, out_inv_res);
+        },
+        .quad4 => {
+            var node_x: [4]F = undefined;
+            var node_y: [4]F = undefined;
+            for (0..4) |nn| {
+                const nid = elem_connect[nn];
+                node_x[nn] = coords_ptr[nid * 3 + 0];
+                node_y[nn] = coords_ptr[nid * 3 + 1];
+            }
+            elements.invertQuad4(&node_x, &node_y, targ_x, targ_y, tol_eps, out_inv_res);
+        },
+        .tet4 => {
+            var node_x: [4]F = undefined;
+            var node_y: [4]F = undefined;
+            var node_z: [4]F = undefined;
+            for (0..4) |nn| {
+                const nid = elem_connect[nn];
+                node_x[nn] = coords_ptr[nid * 3 + 0];
+                node_y[nn] = coords_ptr[nid * 3 + 1];
+                node_z[nn] = coords_ptr[nid * 3 + 2];
+            }
+            elements.invertTet4(
+                &node_x,
+                &node_y,
+                &node_z,
+                targ_x,
+                targ_y,
+                targ_z,
+                tol_eps,
+                out_inv_res,
+            );
+        },
+        .hex8 => {
+            var node_x: [8]F = undefined;
+            var node_y: [8]F = undefined;
+            var node_z: [8]F = undefined;
+            for (0..8) |nn| {
+                const nid = elem_connect[nn];
+                node_x[nn] = coords_ptr[nid * 3 + 0];
+                node_y[nn] = coords_ptr[nid * 3 + 1];
+                node_z[nn] = coords_ptr[nid * 3 + 2];
+            }
+            elements.invertHex8(
+                &node_x,
+                &node_y,
+                &node_z,
+                targ_x,
+                targ_y,
+                targ_z,
+                tol_eps,
+                out_inv_res,
+            );
+        },
+        .quad8 => {
+            var node_x: [8]F = undefined;
+            var node_y: [8]F = undefined;
+            for (0..8) |nn| {
+                const nid = elem_connect[nn];
+                node_x[nn] = coords_ptr[nid * 3 + 0];
+                node_y[nn] = coords_ptr[nid * 3 + 1];
+            }
+            elements.invertQuad8(&node_x, &node_y, targ_x, targ_y, tol_eps, out_inv_res);
+        },
+        .hex20 => {
+            var node_x: [20]F = undefined;
+            var node_y: [20]F = undefined;
+            var node_z: [20]F = undefined;
+            for (0..20) |nn| {
+                const nid = elem_connect[nn];
+                node_x[nn] = coords_ptr[nid * 3 + 0];
+                node_y[nn] = coords_ptr[nid * 3 + 1];
+                node_z[nn] = coords_ptr[nid * 3 + 2];
+            }
+            elements.invertHex20(
+                &node_x,
+                &node_y,
+                &node_z,
+                targ_x,
+                targ_y,
+                targ_z,
+                tol_eps,
+                out_inv_res,
+            );
+        },
+        else => {},
     }
 }
