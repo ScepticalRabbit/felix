@@ -46,7 +46,7 @@ pub fn runErrGraphSimulation(
         return;
     }
 
-    const alloc = std.heap.c_allocator;
+    const alloc = std.heap.page_allocator;
     const node_states = alloc.alloc(F, num_nodes * total_elements) catch @panic("OOM");
     defer alloc.free(node_states);
 

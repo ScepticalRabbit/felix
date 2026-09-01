@@ -290,7 +290,7 @@ pub fn runSensorSimulation(
     var heap_err_sys: ?[]F = null;
     var heap_err_rand: ?[]F = null;
 
-    const alloc = std.heap.c_allocator;
+    const alloc = std.heap.page_allocator;
 
     if (!use_stack) {
         heap_err_total = alloc.alloc(F, total_elements) catch @panic("OOM");
