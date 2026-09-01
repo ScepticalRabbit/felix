@@ -73,26 +73,19 @@ def disable_pyvista_plotting(
     def create_disabled_figure(*args: Any, **kwargs: Any) -> tuple[Any, Any]:
         return _FigureDisabled(), None
 
-    monkeypatch.setattr(
-        fx,
+    for func_name in (
         "plot_point_sensors_on_sim",
-        create_disabled_plotter,
-    )
-    monkeypatch.setattr(
-        fx,
         "plot_sensors_on_sim",
-        create_disabled_plotter,
-    )
-    monkeypatch.setattr(
-        fx,
+    ):
+        if hasattr(fx, func_name):
+            monkeypatch.setattr(fx, func_name, create_disabled_plotter)
+
+    for func_name in (
         "plot_time_traces",
-        create_disabled_figure,
-    )
-    monkeypatch.setattr(
-        fx,
         "plot_exp_traces",
-        create_disabled_figure,
-    )
+    ):
+        if hasattr(fx, func_name):
+            monkeypatch.setattr(fx, func_name, create_disabled_figure)
 
 
 @pytest.mark.parametrize("example_name", BASIC_EXAMPLES)

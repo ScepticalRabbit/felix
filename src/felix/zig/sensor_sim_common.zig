@@ -322,6 +322,7 @@ pub fn samplePerturbedSensor(
     time_index: usize,
     out_values: *[6]F,
 ) void {
+    out_values.* = [_]F{0.0} ** 6;
     const num_comps = mesh_in.num_components;
     const position = sensor_in.scratch_positions_ptr + sensor_index * 3;
     const rotation = sensor_in.scratch_rot_matrices_ptr + sensor_index * 9;
