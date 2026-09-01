@@ -46,22 +46,18 @@ pub fn runErrGraphSimulation(
         return;
     }
 
-    const alloc = std.heap.page_allocator;
+    var arena = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
     const node_states = alloc.alloc(F, num_nodes * total_elements) catch @panic("OOM");
-    defer alloc.free(node_states);
-
     const node_errors = alloc.alloc(F, num_nodes * total_elements) catch @panic("OOM");
-    defer alloc.free(node_errors);
-
     const in_state_buf = alloc.alloc(F, total_elements) catch @panic("OOM");
-    defer alloc.free(in_state_buf);
 
     const err_sys_buf = alloc.alloc(F, total_elements) catch @panic("OOM");
-    defer alloc.free(err_sys_buf);
     @memset(err_sys_buf, 0.0);
 
     const err_rand_buf = alloc.alloc(F, total_elements) catch @panic("OOM");
-    defer alloc.free(err_rand_buf);
     @memset(err_rand_buf, 0.0);
 
     var rand_streams: [64]sensor_common.RandomStream = undefined;

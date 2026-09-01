@@ -57,7 +57,7 @@ test "Polynomial calibration evaluation" {
 test "1D Table lookup interpolation" {
     // Lookup table: (x, y) pairs: (0, 0), (10, 100), (20, 400)
     const table = [_]F{
-        0.0, 0.0,
+        0.0,  0.0,
         10.0, 100.0,
         20.0, 400.0,
     };

@@ -9,9 +9,9 @@
 from pathlib import Path
 
 # Sizing and workloads
-SENSORS_NUM: int = 100
+SENSORS_NUM: int = 128
 SIM_TIMES_NUM: int = 50
-SAMPLE_TIMES_NUM: int = 200
+SAMPLE_TIMES_NUM: int = 128
 
 # Synthetic mesh divisions (elements along each axis)
 MESH_DIVS_2D: tuple[int, int] = (20, 20)
@@ -23,8 +23,8 @@ DOMAIN_LENGTH_Y: float = 50.0
 DOMAIN_LENGTH_Z: float = 20.0
 
 # Timing and repetition parameters
-CALC_MEAS_CALLS: int = 200
-RUNS_PER_CASE: int = 30
+CALC_MEAS_CALLS: int = 128
+RUNS_PER_CASE: int = 32
 WARMUP_RUNS: int = 2
 
 # Benchmark output directory

@@ -16,32 +16,27 @@ const F: type = f64;
 
 pub const RandomStream = struct {
     prng: std.Random.Xoshiro256,
-    random: std.Random,
     has_spare_normal: bool = false,
     spare_normal_val: F = 0.0,
 
     const Self = @This();
 
     pub fn init(seed_val: u64) Self {
-        var stream = Self{
+        return Self{
             .prng = std.Random.Xoshiro256.init(seed_val),
-            .random = undefined,
             .has_spare_normal = false,
             .spare_normal_val = 0.0,
         };
-        stream.random = stream.prng.random();
-        return stream;
     }
 
     pub fn reseed(self: *Self, seed_val: u64) void {
         self.prng = std.Random.Xoshiro256.init(seed_val);
-        self.random = self.prng.random();
         self.has_spare_normal = false;
         self.spare_normal_val = 0.0;
     }
 
     pub fn uniform01(self: *Self) F {
-        return self.random.float(F);
+        return self.prng.random().float(F);
     }
 
     pub fn uniform(self: *Self, low_val: F, high_val: F) F {

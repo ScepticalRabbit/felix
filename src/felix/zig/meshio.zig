@@ -130,7 +130,7 @@ pub const Field = struct {
         const mem_array = try outer_alloc.alloc(F, time_n * coord_n * fields_n);
         @memset(mem_array, 0.0);
 
-        const mem_dims = [3]usize{ time_n, coord_n, @as(usize, fields_n) };
+        const mem_dims = [3]usize{ coord_n, @as(usize, fields_n), time_n };
         const arr = try NDArray(F).init(outer_alloc, mem_array, mem_dims[0..]);
 
         return .{
@@ -140,14 +140,14 @@ pub const Field = struct {
     }
 
     pub inline fn getTimeN(self: *const Self) usize {
-        return self.array.dims[0];
+        return self.array.dims[2];
     }
     pub inline fn getCoordN(self: *const Self) usize {
-        return self.array.dims[1];
+        return self.array.dims[0];
     }
     pub inline fn getFieldsN(self: *const Self) u8 {
-        std.debug.assert(self.array.dims[2] <= std.math.maxInt(u8));
-        return @intCast(self.array.dims[2]);
+        std.debug.assert(self.array.dims[1] <= std.math.maxInt(u8));
+        return @intCast(self.array.dims[1]);
     }
 
     pub fn deinit(self: *Self, outer_alloc: std.mem.Allocator) void {
@@ -241,15 +241,13 @@ pub fn parseField(
     field: *Field,
     field_n: u8,
 ) !void {
-
     // Each row is a coordinate
     // Each field csv has row where each column in the row is a time step
-    var inds = [_]usize{ 0, 0, 0 }; // time_n,coord_n,field_n
-    inds[2] = field_n;
+    var inds = [_]usize{ 0, field_n, 0 }; // coord_n, field_n, time_n
 
     for (csv_lines.items, 0..) |line_str, ii| {
-        inds[0] = 0; // time_n
-        inds[1] = ii; // coord_n, each row is a new coord
+        inds[0] = ii; // coord_n
+        inds[2] = 0; // time_n
 
         var split_iter = std.mem.splitScalar(u8, line_str, ',');
 
@@ -258,7 +256,7 @@ pub fn parseField(
 
             field.array.set(inds[0..], num_f);
 
-            inds[0] += 1; // increment time_n as we step along the row
+            inds[2] += 1; // increment time_n as we step along the row
         }
     }
 }
@@ -370,6 +368,10 @@ pub fn loadMultiSimData(
     dir_paths: []const []const u8,
     files: SimDataFiles,
 ) ![]SimData {
+    var arena = std.heap.ArenaAllocator.init(outer_alloc);
+    defer arena.deinit();
+    const local_alloc = arena.allocator();
+
     var sim_data_slice = try outer_alloc.alloc(SimData, dir_paths.len);
     var loaded_count: usize = 0;
     errdefer {
@@ -381,50 +383,40 @@ pub fn loadMultiSimData(
 
     for (dir_paths, 0..) |dir_path, ii| {
         const path_coords = try std.fmt.allocPrint(
-            outer_alloc,
+            local_alloc,
             "{s}{s}",
             .{ dir_path, files.coord_file },
         );
-        defer outer_alloc.free(path_coords);
 
         const path_connect = try std.fmt.allocPrint(
-            outer_alloc,
+            local_alloc,
             "{s}{s}",
             .{ dir_path, files.connect_file },
         );
-        defer outer_alloc.free(path_connect);
 
         var field_paths: ?[][]const u8 = null;
         if (files.field_files) |ff| {
-            field_paths = try outer_alloc.alloc([]const u8, ff.len);
+            field_paths = try local_alloc.alloc([]const u8, ff.len);
             for (ff, 0..) |suffix, jj| {
                 field_paths.?[jj] = try std.fmt.allocPrint(
-                    outer_alloc,
+                    local_alloc,
                     "{s}{s}",
                     .{ dir_path, suffix },
                 );
             }
         }
-        defer if (field_paths) |fp| {
-            for (fp) |pp| outer_alloc.free(pp);
-            outer_alloc.free(fp);
-        };
 
         var disp_paths: ?[][]const u8 = null;
         if (files.disp_files) |df| {
-            disp_paths = try outer_alloc.alloc([]const u8, df.len);
+            disp_paths = try local_alloc.alloc([]const u8, df.len);
             for (df, 0..) |suffix, jj| {
                 disp_paths.?[jj] = try std.fmt.allocPrint(
-                    outer_alloc,
+                    local_alloc,
                     "{s}{s}",
                     .{ dir_path, suffix },
                 );
             }
         }
-        defer if (disp_paths) |dp| {
-            for (dp) |pp| outer_alloc.free(pp);
-            outer_alloc.free(dp);
-        };
 
         sim_data_slice[ii] = try loadSimData(
             outer_alloc,

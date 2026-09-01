@@ -51,6 +51,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(shared_lib);
 
     const test_files = [_][]const u8{
+        "src/test_felix.zig",
         "src/felix/zig/transforms_simd.zig",
         "src/felix/zig/stats_simd.zig",
         "src/felix/zig/errors_simd.zig",

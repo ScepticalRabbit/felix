@@ -189,8 +189,12 @@ pub export fn felixCalcExperimentStats(
         return -1;
     }
 
+    var arena = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
     stats.calcExperimentStats(
-        std.heap.c_allocator,
+        alloc,
         values_ptr[0 .. num_experiments * num_values],
         num_experiments,
         num_values,

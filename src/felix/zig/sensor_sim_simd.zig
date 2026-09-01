@@ -290,17 +290,14 @@ pub fn runSensorSimulation(
     var heap_err_sys: ?[]F = null;
     var heap_err_rand: ?[]F = null;
 
-    const alloc = std.heap.page_allocator;
+    var arena = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
 
     if (!use_stack) {
         heap_err_total = alloc.alloc(F, total_elements) catch @panic("OOM");
         heap_err_sys = alloc.alloc(F, total_elements) catch @panic("OOM");
         heap_err_rand = alloc.alloc(F, total_elements) catch @panic("OOM");
-    }
-    defer {
-        if (heap_err_total) |h| alloc.free(h);
-        if (heap_err_sys) |h| alloc.free(h);
-        if (heap_err_rand) |h| alloc.free(h);
     }
 
     const err_total_slice = if (use_stack)
@@ -327,29 +324,33 @@ pub fn runSensorSimulation(
             sensor_in.work_positions_ptr[0 .. num_sensors * 3],
             sensor_in.positions_ptr[0 .. num_sensors * 3],
         );
-        if (sensor_in.num_rot_matrices > 0) {
-            for (0..num_sensors) |ss| {
-                const src_idx = if (sensor_in.num_rot_matrices == 1) 0 else ss;
-                @memcpy(
-                    sensor_in.work_rot_matrices_ptr[ss * 9 .. (ss + 1) * 9],
-                    sensor_in.rot_matrices_ptr[src_idx * 9 .. (src_idx + 1) * 9],
-                );
-            }
-        } else {
-            for (0..num_sensors) |ss| {
-                common.setIdentity(sensor_in.work_rot_matrices_ptr + ss * 9);
+        if (sensor_in.work_rot_matrices_ptr != null) {
+            if (sensor_in.num_rot_matrices > 0 and sensor_in.rot_matrices_ptr != null) {
+                for (0..num_sensors) |ss| {
+                    const src_idx = if (sensor_in.num_rot_matrices == 1) 0 else ss;
+                    @memcpy(
+                        sensor_in.work_rot_matrices_ptr[ss * 9 .. (ss + 1) * 9],
+                        sensor_in.rot_matrices_ptr[src_idx * 9 .. (src_idx + 1) * 9],
+                    );
+                }
+            } else {
+                for (0..num_sensors) |ss| {
+                    common.setIdentity(sensor_in.work_rot_matrices_ptr + ss * 9);
+                }
             }
         }
-        if (sensor_in.num_sample_times > 0) {
-            @memcpy(
-                sensor_in.work_times_ptr[0..num_out_times],
-                sensor_in.sample_times_ptr[0..num_out_times],
-            );
-        } else {
-            @memcpy(
-                sensor_in.work_times_ptr[0..num_sim_times],
-                mesh_in.sim_times_ptr[0..num_sim_times],
-            );
+        if (sensor_in.work_times_ptr != null) {
+            if (sensor_in.num_sample_times > 0 and sensor_in.sample_times_ptr != null) {
+                @memcpy(
+                    sensor_in.work_times_ptr[0..num_out_times],
+                    sensor_in.sample_times_ptr[0..num_out_times],
+                );
+            } else if (mesh_in.sim_times_ptr != null) {
+                @memcpy(
+                    sensor_in.work_times_ptr[0..num_sim_times],
+                    mesh_in.sim_times_ptr[0..num_sim_times],
+                );
+            }
         }
     }
 

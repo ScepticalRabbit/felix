@@ -10,7 +10,6 @@ from pyvale.sensorsim.experimentsimio import load_exp_sim_data, save_exp_sim_dat
 from pyvale.sensorsim.visualexpplotter import *
 from pyvale.sensorsim.visualimages import *
 from pyvale.sensorsim.visualopts import *
-from pyvale.sensorsim.visualsensormeshes import *
 from pyvale.sensorsim.visualsimanimator import *
 from pyvale.sensorsim.visualsimplotter import *
 from pyvale.sensorsim.visualsimsensors import *

@@ -53,53 +53,47 @@ pub fn loadCaseSimData(
     field_suffixes: ?[]const []const u8,
     disp_suffixes: ?[]const []const u8,
 ) !SimData {
+    var arena = std.heap.ArenaAllocator.init(outer_alloc);
+    defer arena.deinit();
+    const local_alloc = arena.allocator();
+
     const dir_path = policy.datasetPath(case);
 
     const coord_path = try std.fmt.allocPrint(
-        outer_alloc,
+        local_alloc,
         "{s}coords.csv",
         .{dir_path},
     );
-    defer outer_alloc.free(coord_path);
 
     const connect_path = try std.fmt.allocPrint(
-        outer_alloc,
+        local_alloc,
         "{s}connectivity.csv",
         .{dir_path},
     );
-    defer outer_alloc.free(connect_path);
 
     var field_paths: ?[][]const u8 = null;
     if (field_suffixes) |fs| {
-        field_paths = try outer_alloc.alloc([]const u8, fs.len);
+        field_paths = try local_alloc.alloc([]const u8, fs.len);
         for (fs, 0..) |suffix, ii| {
             field_paths.?[ii] = try std.fmt.allocPrint(
-                outer_alloc,
+                local_alloc,
                 "{s}{s}",
                 .{ dir_path, suffix },
             );
         }
     }
-    defer if (field_paths) |fp| {
-        for (fp) |p| outer_alloc.free(p);
-        outer_alloc.free(fp);
-    };
 
     var disp_paths: ?[][]const u8 = null;
     if (disp_suffixes) |ds| {
-        disp_paths = try outer_alloc.alloc([]const u8, ds.len);
+        disp_paths = try local_alloc.alloc([]const u8, ds.len);
         for (ds, 0..) |suffix, ii| {
             disp_paths.?[ii] = try std.fmt.allocPrint(
-                outer_alloc,
+                local_alloc,
                 "{s}{s}",
                 .{ dir_path, suffix },
             );
         }
     }
-    defer if (disp_paths) |dp| {
-        for (dp) |p| outer_alloc.free(p);
-        outer_alloc.free(dp);
-    };
 
     return try meshio.loadSimData(
         outer_alloc,

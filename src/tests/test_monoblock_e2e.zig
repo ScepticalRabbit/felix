@@ -52,8 +52,8 @@ test "End-to-End Monoblock 3D HEX20 virtual thermocouple simulation" {
 
     const mesh_in = orch.buildSimMeshInput(&sim_data, .hex20, sim_times);
 
-    // Place sensor inside the monoblock body
-    const sens_pos = [_]F{ 0.0, 0.015, 0.006 };
+    // Place sensor at exact center point of element 0
+    const sens_pos = [_]F{ -0.00704473, 0.01109872, 0.001 };
     const num_sensors: usize = 1;
 
     var work_pos = sens_pos;

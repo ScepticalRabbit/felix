@@ -15,7 +15,7 @@ const VecSF = common.VecSF;
 const SimdWidth = common.SimdWidth;
 
 pub fn calcExperimentStats(
-    alloc: std.mem.Allocator,
+    outer_alloc: std.mem.Allocator,
     values: []const F,
     num_experiments: usize,
     num_values: usize,
@@ -30,8 +30,11 @@ pub fn calcExperimentStats(
     if (num_experiments == 0) return error.NoExperiments;
     if (values.len != num_experiments * num_values) return error.InvalidShape;
 
+    var arena = std.heap.ArenaAllocator.init(outer_alloc);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
     const work = try alloc.alloc(F, num_experiments);
-    defer alloc.free(work);
 
     const n_exp_f = @as(F, @floatFromInt(num_experiments));
     const n_exp_vec: VecSF = @splat(n_exp_f);
