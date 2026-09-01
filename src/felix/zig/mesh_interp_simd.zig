@@ -38,6 +38,7 @@ pub fn sampleCachedFEPointOverTimeSIMD(
 }
 
 pub const interpTimeLinear = scalar.interpTimeLinear;
+pub const interpTimesLinear = scalar.interpTimesLinear;
 pub const sampleCachedFEPoint = scalar.sampleCachedFEPoint;
 
 // --------------------------------------------------------------------------------------

@@ -72,23 +72,25 @@ pub fn shapeQuad4(
     out_deriv_xi: ?*[4]F,
     out_deriv_eta: ?*[4]F,
 ) void {
-    out_weights[0] = 0.25 * (1.0 - xi_coord) * (1.0 - eta_coord);
-    out_weights[1] = 0.25 * (1.0 + xi_coord) * (1.0 - eta_coord);
-    out_weights[2] = 0.25 * (1.0 + xi_coord) * (1.0 + eta_coord);
-    out_weights[3] = 0.25 * (1.0 - xi_coord) * (1.0 + eta_coord);
+    const Vec4 = @Vector(4, F);
+    const xi_signs: Vec4 = .{ -1.0, 1.0, 1.0, -1.0 };
+    const eta_signs: Vec4 = .{ -1.0, -1.0, 1.0, 1.0 };
+
+    const one: Vec4 = @splat(1.0);
+    const quarter: Vec4 = @splat(0.25);
+    const xi_vec: Vec4 = @splat(xi_coord);
+    const eta_vec: Vec4 = @splat(eta_coord);
+
+    const factor_xi = one + xi_signs * xi_vec;
+    const factor_eta = one + eta_signs * eta_vec;
+
+    out_weights.* = quarter * factor_xi * factor_eta;
 
     if (out_deriv_xi) |deriv_xi| {
-        deriv_xi[0] = -0.25 * (1.0 - eta_coord);
-        deriv_xi[1] = 0.25 * (1.0 - eta_coord);
-        deriv_xi[2] = 0.25 * (1.0 + eta_coord);
-        deriv_xi[3] = -0.25 * (1.0 + eta_coord);
+        deriv_xi.* = quarter * xi_signs * factor_eta;
     }
-
     if (out_deriv_eta) |deriv_eta| {
-        deriv_eta[0] = -0.25 * (1.0 - xi_coord);
-        deriv_eta[1] = -0.25 * (1.0 + xi_coord);
-        deriv_eta[2] = 0.25 * (1.0 + xi_coord);
-        deriv_eta[3] = 0.25 * (1.0 - xi_coord);
+        deriv_eta.* = quarter * eta_signs * factor_xi;
     }
 }
 
@@ -116,13 +118,9 @@ pub fn shapeQuad8(
         }
     }
 
-    // Node 4: (0, -1)
     out_weights[4] = 0.5 * (1.0 - xi_coord * xi_coord) * (1.0 - eta_coord);
-    // Node 5: (1, 0)
     out_weights[5] = 0.5 * (1.0 + xi_coord) * (1.0 - eta_coord * eta_coord);
-    // Node 6: (0, 1)
     out_weights[6] = 0.5 * (1.0 - xi_coord * xi_coord) * (1.0 + eta_coord);
-    // Node 7: (-1, 0)
     out_weights[7] = 0.5 * (1.0 - xi_coord) * (1.0 - eta_coord * eta_coord);
 
     if (out_deriv_xi) |deriv_xi| {
@@ -160,26 +158,35 @@ pub fn shapeHex8(
     out_deriv_eta: ?*[8]F,
     out_deriv_zeta: ?*[8]F,
 ) void {
-    const xi_signs = [8]F{ -1.0, 1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0 };
-    const eta_signs = [8]F{ -1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0, 1.0 };
-    const zeta_signs = [8]F{ -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0 };
+    const Vec8 = @Vector(8, F);
+    const xi_signs: Vec8 = .{ -1.0, 1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0 };
+    const eta_signs: Vec8 = .{ -1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0, 1.0 };
+    const zeta_signs: Vec8 = .{ -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0 };
 
-    for (0..8) |ii| {
-        const factor_xi = 1.0 + xi_signs[ii] * xi_coord;
-        const factor_eta = 1.0 + eta_signs[ii] * eta_coord;
-        const factor_zeta = 1.0 + zeta_signs[ii] * zeta_coord;
+    const one: Vec8 = @splat(1.0);
+    const eighth: Vec8 = @splat(0.125);
+    const xi_vec: Vec8 = @splat(xi_coord);
+    const eta_vec: Vec8 = @splat(eta_coord);
+    const zeta_vec: Vec8 = @splat(zeta_coord);
 
-        out_weights[ii] = 0.125 * factor_xi * factor_eta * factor_zeta;
+    const factor_xi = one + xi_signs * xi_vec;
+    const factor_eta = one + eta_signs * eta_vec;
+    const factor_zeta = one + zeta_signs * zeta_vec;
 
-        if (out_deriv_xi) |deriv_xi| {
-            deriv_xi[ii] = 0.125 * xi_signs[ii] * factor_eta * factor_zeta;
-        }
-        if (out_deriv_eta) |deriv_eta| {
-            deriv_eta[ii] = 0.125 * factor_xi * eta_signs[ii] * factor_zeta;
-        }
-        if (out_deriv_zeta) |deriv_zeta| {
-            deriv_zeta[ii] = 0.125 * factor_xi * factor_eta * zeta_signs[ii];
-        }
+    const factor_eta_zeta = factor_eta * factor_zeta;
+    const factor_xi_zeta = factor_xi * factor_zeta;
+    const factor_xi_eta = factor_xi * factor_eta;
+
+    out_weights.* = eighth * factor_xi * factor_eta_zeta;
+
+    if (out_deriv_xi) |deriv_xi| {
+        deriv_xi.* = eighth * xi_signs * factor_eta_zeta;
+    }
+    if (out_deriv_eta) |deriv_eta| {
+        deriv_eta.* = eighth * eta_signs * factor_xi_zeta;
+    }
+    if (out_deriv_zeta) |deriv_zeta| {
+        deriv_zeta.* = eighth * zeta_signs * factor_xi_eta;
     }
 }
 
@@ -324,6 +331,10 @@ pub fn invertQuad4(
     tol_eps: F,
     out_result: *InverseResult,
 ) void {
+    const Vec4 = @Vector(4, F);
+    const nx: Vec4 = node_x.*;
+    const ny: Vec4 = node_y.*;
+
     var xi_val: F = 0.0;
     var eta_val: F = 0.0;
     var weights: [4]F = undefined;
@@ -336,21 +347,16 @@ pub fn invertQuad4(
     for (0..max_iters) |_| {
         shapeQuad4(xi_val, eta_val, &weights, &deriv_xi, &deriv_eta);
 
-        var calc_x: F = 0.0;
-        var calc_y: F = 0.0;
-        var jac_11: F = 0.0;
-        var jac_12: F = 0.0;
-        var jac_21: F = 0.0;
-        var jac_22: F = 0.0;
+        const w_vec: Vec4 = weights;
+        const dxi_vec: Vec4 = deriv_xi;
+        const deta_vec: Vec4 = deriv_eta;
 
-        for (0..4) |nn| {
-            calc_x += weights[nn] * node_x[nn];
-            calc_y += weights[nn] * node_y[nn];
-            jac_11 += deriv_xi[nn] * node_x[nn];
-            jac_12 += deriv_eta[nn] * node_x[nn];
-            jac_21 += deriv_xi[nn] * node_y[nn];
-            jac_22 += deriv_eta[nn] * node_y[nn];
-        }
+        const calc_x = @reduce(.Add, w_vec * nx);
+        const calc_y = @reduce(.Add, w_vec * ny);
+        const jac_11 = @reduce(.Add, dxi_vec * nx);
+        const jac_12 = @reduce(.Add, deta_vec * nx);
+        const jac_21 = @reduce(.Add, dxi_vec * ny);
+        const jac_22 = @reduce(.Add, deta_vec * ny);
 
         const resid_x = targ_x - calc_x;
         const resid_y = targ_y - calc_y;
@@ -540,6 +546,11 @@ pub fn invertHex8(
     tol_eps: F,
     out_result: *InverseResult,
 ) void {
+    const Vec8 = @Vector(8, F);
+    const nx: Vec8 = node_x.*;
+    const ny: Vec8 = node_y.*;
+    const nz: Vec8 = node_z.*;
+
     var xi_val: F = 0.0;
     var eta_val: F = 0.0;
     var zeta_val: F = 0.0;
@@ -563,37 +574,26 @@ pub fn invertHex8(
             &deriv_zeta,
         );
 
-        var calc_x: F = 0.0;
-        var calc_y: F = 0.0;
-        var calc_z: F = 0.0;
+        const w_vec: Vec8 = weights;
+        const dxi_vec: Vec8 = deriv_xi;
+        const deta_vec: Vec8 = deriv_eta;
+        const dzeta_vec: Vec8 = deriv_zeta;
 
-        var j11: F = 0.0;
-        var j12: F = 0.0;
-        var j13: F = 0.0;
-        var j21: F = 0.0;
-        var j22: F = 0.0;
-        var j23: F = 0.0;
-        var j31: F = 0.0;
-        var j32: F = 0.0;
-        var j33: F = 0.0;
+        const calc_x = @reduce(.Add, w_vec * nx);
+        const calc_y = @reduce(.Add, w_vec * ny);
+        const calc_z = @reduce(.Add, w_vec * nz);
 
-        for (0..8) |nn| {
-            calc_x += weights[nn] * node_x[nn];
-            calc_y += weights[nn] * node_y[nn];
-            calc_z += weights[nn] * node_z[nn];
+        const j11 = @reduce(.Add, dxi_vec * nx);
+        const j12 = @reduce(.Add, deta_vec * nx);
+        const j13 = @reduce(.Add, dzeta_vec * nx);
 
-            j11 += deriv_xi[nn] * node_x[nn];
-            j12 += deriv_eta[nn] * node_x[nn];
-            j13 += deriv_zeta[nn] * node_x[nn];
+        const j21 = @reduce(.Add, dxi_vec * ny);
+        const j22 = @reduce(.Add, deta_vec * ny);
+        const j23 = @reduce(.Add, dzeta_vec * ny);
 
-            j21 += deriv_xi[nn] * node_y[nn];
-            j22 += deriv_eta[nn] * node_y[nn];
-            j23 += deriv_zeta[nn] * node_y[nn];
-
-            j31 += deriv_xi[nn] * node_z[nn];
-            j32 += deriv_eta[nn] * node_z[nn];
-            j33 += deriv_zeta[nn] * node_z[nn];
-        }
+        const j31 = @reduce(.Add, dxi_vec * nz);
+        const j32 = @reduce(.Add, deta_vec * nz);
+        const j33 = @reduce(.Add, dzeta_vec * nz);
 
         const resid_x = targ_x - calc_x;
         const resid_y = targ_y - calc_y;

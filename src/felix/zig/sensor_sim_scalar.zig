@@ -65,42 +65,37 @@ pub fn runSensorSimulation(
             &loc,
         );
 
+        const sens_base_idx = ss * (num_comps * num_out_times);
+
         for (0..num_comps) |cc| {
+            const comp_out_ptr = out_truth + sens_base_idx + cc * num_out_times;
+
             if (!loc.found) {
-                for (0..num_out_times) |tt| {
-                    const out_idx = ss * (num_comps * num_out_times) + cc * num_out_times + tt;
-                    out_truth[out_idx] = 0.0;
-                }
+                @memset(comp_out_ptr[0..num_out_times], 0.0);
                 continue;
             }
 
-            for (0..num_sim_times) |tt| {
-                var field_val: F = 0.0;
-                for (0..loc.node_count) |nn| {
-                    const nid = loc.node_indices[nn];
-                    const node_field_idx = nid * (num_comps * num_sim_times) +
-                        cc * num_sim_times + tt;
-                    field_val += loc.weights[nn] * mesh_in.nodal_fields_ptr[node_field_idx];
+            @memset(sim_time_buf[0..num_sim_times], 0.0);
+            for (0..loc.node_count) |nn| {
+                const weight_val = loc.weights[nn];
+                const node_id = loc.node_indices[nn];
+                const node_offset = node_id * (num_comps * num_sim_times) + cc * num_sim_times;
+                const node_data = mesh_in.nodal_fields_ptr + node_offset;
+
+                for (0..num_sim_times) |tt| {
+                    sim_time_buf[tt] += weight_val * node_data[tt];
                 }
-                sim_time_buf[tt] = field_val;
             }
 
             if (sensor_in.num_sample_times > 0) {
-                for (0..num_out_times) |tt| {
-                    const targ_time = sensor_in.sample_times_ptr[tt];
-                    const interp_val = mesh_interp.interpTimeLinear(
-                        sim_times,
-                        sim_time_buf[0..num_sim_times],
-                        targ_time,
-                    );
-                    const out_idx = ss * (num_comps * num_out_times) + cc * num_out_times + tt;
-                    out_truth[out_idx] = interp_val;
-                }
+                mesh_interp.interpTimesLinear(
+                    sim_times,
+                    sim_time_buf[0..num_sim_times],
+                    sensor_in.sample_times_ptr[0..num_out_times],
+                    comp_out_ptr[0..num_out_times],
+                );
             } else {
-                for (0..num_out_times) |tt| {
-                    const out_idx = ss * (num_comps * num_out_times) + cc * num_out_times + tt;
-                    out_truth[out_idx] = sim_time_buf[tt];
-                }
+                @memcpy(comp_out_ptr[0..num_out_times], sim_time_buf[0..num_out_times]);
             }
         }
     }
@@ -110,6 +105,7 @@ pub fn runSensorSimulation(
         for (0..num_sensors) |ss| {
             const rot_idx = if (sensor_in.num_rot_matrices == 1) 0 else ss;
             const rot_mat_ptr = sensor_in.rot_matrices_ptr + rot_idx * 9;
+            const base_idx = ss * (num_comps * num_out_times);
 
             if (sensor_in.is_tensor == 0) {
                 if (sensor_in.spatial_dims == 2 and num_comps == 2) {
@@ -117,45 +113,43 @@ pub fn runSensorSimulation(
                         rot_mat_ptr[0], rot_mat_ptr[1],
                         rot_mat_ptr[3], rot_mat_ptr[4],
                     };
+                    const ptr_x = out_truth + base_idx + 0 * num_out_times;
+                    const ptr_y = out_truth + base_idx + 1 * num_out_times;
                     for (0..num_out_times) |tt| {
-                        const base_idx = ss * (num_comps * num_out_times) + tt;
-                        const idx_x = base_idx + 0 * num_out_times;
-                        const idx_y = base_idx + 1 * num_out_times;
                         var tx: F = undefined;
                         var ty: F = undefined;
                         transforms.transformVector2D(
                             &r22,
-                            out_truth[idx_x],
-                            out_truth[idx_y],
+                            ptr_x[tt],
+                            ptr_y[tt],
                             &tx,
                             &ty,
                         );
-                        out_truth[idx_x] = tx;
-                        out_truth[idx_y] = ty;
+                        ptr_x[tt] = tx;
+                        ptr_y[tt] = ty;
                     }
                 } else if (num_comps == 3) {
                     var r33: [9]F = undefined;
                     for (0..9) |ii| r33[ii] = rot_mat_ptr[ii];
+                    const ptr_x = out_truth + base_idx + 0 * num_out_times;
+                    const ptr_y = out_truth + base_idx + 1 * num_out_times;
+                    const ptr_z = out_truth + base_idx + 2 * num_out_times;
                     for (0..num_out_times) |tt| {
-                        const base_idx = ss * (num_comps * num_out_times) + tt;
-                        const idx_x = base_idx + 0 * num_out_times;
-                        const idx_y = base_idx + 1 * num_out_times;
-                        const idx_z = base_idx + 2 * num_out_times;
                         var tx: F = undefined;
                         var ty: F = undefined;
                         var tz: F = undefined;
                         transforms.transformVector3D(
                             &r33,
-                            out_truth[idx_x],
-                            out_truth[idx_y],
-                            out_truth[idx_z],
+                            ptr_x[tt],
+                            ptr_y[tt],
+                            ptr_z[tt],
                             &tx,
                             &ty,
                             &tz,
                         );
-                        out_truth[idx_x] = tx;
-                        out_truth[idx_y] = ty;
-                        out_truth[idx_z] = tz;
+                        ptr_x[tt] = tx;
+                        ptr_y[tt] = ty;
+                        ptr_z[tt] = tz;
                     }
                 }
             } else {
@@ -164,43 +158,53 @@ pub fn runSensorSimulation(
                         rot_mat_ptr[0], rot_mat_ptr[1],
                         rot_mat_ptr[3], rot_mat_ptr[4],
                     };
+                    const ptr_xx = out_truth + base_idx + 0 * num_out_times;
+                    const ptr_yy = out_truth + base_idx + 1 * num_out_times;
+                    const ptr_xy = out_truth + base_idx + 2 * num_out_times;
                     for (0..num_out_times) |tt| {
-                        const base_idx = ss * (num_comps * num_out_times) + tt;
-                        const idx_xx = base_idx + 0 * num_out_times;
-                        const idx_yy = base_idx + 1 * num_out_times;
-                        const idx_xy = base_idx + 2 * num_out_times;
                         var t_xx: F = undefined;
                         var t_yy: F = undefined;
                         var t_xy: F = undefined;
                         transforms.transformTensor2D(
                             &r22,
-                            out_truth[idx_xx],
-                            out_truth[idx_yy],
-                            out_truth[idx_xy],
+                            ptr_xx[tt],
+                            ptr_yy[tt],
+                            ptr_xy[tt],
                             &t_xx,
                             &t_yy,
                             &t_xy,
                         );
-                        out_truth[idx_xx] = t_xx;
-                        out_truth[idx_yy] = t_yy;
-                        out_truth[idx_xy] = t_xy;
+                        ptr_xx[tt] = t_xx;
+                        ptr_yy[tt] = t_yy;
+                        ptr_xy[tt] = t_xy;
                     }
                 } else if (num_comps == 6) {
                     var r33: [9]F = undefined;
                     for (0..9) |ii| r33[ii] = rot_mat_ptr[ii];
+                    const ptr_xx = out_truth + base_idx + 0 * num_out_times;
+                    const ptr_yy = out_truth + base_idx + 1 * num_out_times;
+                    const ptr_zz = out_truth + base_idx + 2 * num_out_times;
+                    const ptr_xy = out_truth + base_idx + 3 * num_out_times;
+                    const ptr_xz = out_truth + base_idx + 4 * num_out_times;
+                    const ptr_yz = out_truth + base_idx + 5 * num_out_times;
                     for (0..num_out_times) |tt| {
                         var in_t: [6]F = undefined;
-                        const base_idx = ss * (num_comps * num_out_times) + tt;
-                        for (0..6) |cc| {
-                            const idx = base_idx + cc * num_out_times;
-                            in_t[cc] = out_truth[idx];
-                        }
+                        in_t[0] = ptr_xx[tt];
+                        in_t[1] = ptr_yy[tt];
+                        in_t[2] = ptr_zz[tt];
+                        in_t[3] = ptr_xy[tt];
+                        in_t[4] = ptr_xz[tt];
+                        in_t[5] = ptr_yz[tt];
+
                         var out_t: [6]F = undefined;
                         transforms.transformTensor3D(&r33, &in_t, &out_t);
-                        for (0..6) |cc| {
-                            const idx = base_idx + cc * num_out_times;
-                            out_truth[idx] = out_t[cc];
-                        }
+
+                        ptr_xx[tt] = out_t[0];
+                        ptr_yy[tt] = out_t[1];
+                        ptr_zz[tt] = out_t[2];
+                        ptr_xy[tt] = out_t[3];
+                        ptr_xz[tt] = out_t[4];
+                        ptr_yz[tt] = out_t[5];
                     }
                 }
             }

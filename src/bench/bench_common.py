@@ -158,16 +158,16 @@ def create_synthetic_simdata(
                 "eps_xx",
                 "eps_yy",
                 "eps_zz",
-                "eps_yz",
-                "eps_xz",
                 "eps_xy",
+                "eps_xz",
+                "eps_yz",
             )
             node_vars["eps_xx"] = (0.001 * xx) * (1.0 + tt)
             node_vars["eps_yy"] = (0.001 * yy) * (1.0 + 0.5 * tt)
             node_vars["eps_zz"] = (0.001 * zz) * (1.0 + 0.25 * tt)
             node_vars["eps_xy"] = (0.0005 * (xx + yy)) * (1.0 + 0.1 * tt)
-            node_vars["eps_yz"] = (0.0005 * (yy + zz)) * (1.0 + 0.1 * tt)
             node_vars["eps_xz"] = (0.0005 * (xx + zz)) * (1.0 + 0.1 * tt)
+            node_vars["eps_yz"] = (0.0005 * (yy + zz)) * (1.0 + 0.1 * tt)
     else:
         raise ValueError(f"Unknown field kind: {field_kind}")
 

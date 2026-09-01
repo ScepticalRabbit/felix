@@ -38,6 +38,55 @@ pub fn interpTimeLinear(
     return time_series_data[num_times - 1];
 }
 
+pub fn interpTimesLinear(
+    sim_times: []const F,
+    sim_data: []const F,
+    sample_times: []const F,
+    out_vals: []F,
+) void {
+    const num_sim_times = sim_times.len;
+    const num_sample_times = sample_times.len;
+    if (num_sim_times == 0 or num_sample_times == 0) return;
+
+    if (num_sim_times == 1) {
+        @memset(out_vals, sim_data[0]);
+        return;
+    }
+
+    var curr_sim_idx: usize = 0;
+    const last_sim_idx = num_sim_times - 1;
+
+    for (sample_times, 0..) |targ_time, ii| {
+        if (targ_time <= sim_times[0]) {
+            out_vals[ii] = sim_data[0];
+            continue;
+        }
+        if (targ_time >= sim_times[last_sim_idx]) {
+            out_vals[ii] = sim_data[last_sim_idx];
+            continue;
+        }
+
+        if (targ_time < sim_times[curr_sim_idx]) {
+            curr_sim_idx = 0;
+        }
+
+        while (curr_sim_idx < last_sim_idx and targ_time > sim_times[curr_sim_idx + 1]) {
+            curr_sim_idx += 1;
+        }
+
+        const t0 = sim_times[curr_sim_idx];
+        const t1 = sim_times[curr_sim_idx + 1];
+        const dt = t1 - t0;
+        if (dt < 1e-14) {
+            out_vals[ii] = sim_data[curr_sim_idx];
+        } else {
+            const alpha_val = (targ_time - t0) / dt;
+            out_vals[ii] = (1.0 - alpha_val) * sim_data[curr_sim_idx] +
+                alpha_val * sim_data[curr_sim_idx + 1];
+        }
+    }
+}
+
 pub fn sampleCachedFEPoint(
     node_count: usize,
     weights: []const F,

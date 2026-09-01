@@ -29,4 +29,5 @@ pub const SensorLocation = common.SensorLocation;
 pub const calcElementBBox = common.calcElementBBox;
 pub const locatePointInMesh = common.locatePointInMesh;
 pub const interpTimeLinear = mesh_interp_impl.interpTimeLinear;
+pub const interpTimesLinear = mesh_interp_impl.interpTimesLinear;
 pub const sampleCachedFEPoint = mesh_interp_impl.sampleCachedFEPoint;
