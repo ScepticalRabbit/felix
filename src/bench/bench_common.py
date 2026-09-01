@@ -10,6 +10,7 @@ import csv
 from datetime import datetime
 from pathlib import Path
 import time
+from typing import Literal
 import numpy as np
 from scipy.spatial.transform import Rotation
 
@@ -58,13 +59,13 @@ def create_synthetic_mesh_2d(
     for jj in range(divs[1]):
         for ii in range(divs[0]):
             n0 = jj * num_x + ii
-            n1 = jj * num_x + (ii + 1)
+            n1 = n0 + 1
             n2 = (jj + 1) * num_x + (ii + 1)
             n3 = (jj + 1) * num_x + ii
             quad_elements.append([n0, n1, n2, n3])
 
-    connectivity = np.array(quad_elements, dtype=np.uint64)
-    return coords, connectivity
+    connect = np.array(quad_elements, dtype=np.int64)
+    return coords, connect
 
 
 def create_synthetic_mesh_3d(
@@ -86,26 +87,24 @@ def create_synthetic_mesh_3d(
     coords = np.column_stack([xx.ravel(), yy.ravel(), zz.ravel()])
 
     hex_elements = []
+    slice_size = num_x * num_y
     for kk in range(divs[2]):
         for jj in range(divs[1]):
             for ii in range(divs[0]):
-                plane_curr = kk * (num_x * num_y)
-                plane_next = (kk + 1) * (num_x * num_y)
+                b0 = kk * slice_size + jj * num_x + ii
+                b1 = b0 + 1
+                b2 = kk * slice_size + (jj + 1) * num_x + (ii + 1)
+                b3 = kk * slice_size + (jj + 1) * num_x + ii
 
-                n0 = plane_curr + jj * num_x + ii
-                n1 = plane_curr + jj * num_x + (ii + 1)
-                n2 = plane_curr + (jj + 1) * num_x + (ii + 1)
-                n3 = plane_curr + (jj + 1) * num_x + ii
+                t0 = (kk + 1) * slice_size + jj * num_x + ii
+                t1 = t0 + 1
+                t2 = (kk + 1) * slice_size + (jj + 1) * num_x + (ii + 1)
+                t3 = (kk + 1) * slice_size + (jj + 1) * num_x + ii
 
-                n4 = plane_next + jj * num_x + ii
-                n5 = plane_next + jj * num_x + (ii + 1)
-                n6 = plane_next + (jj + 1) * num_x + (ii + 1)
-                n7 = plane_next + (jj + 1) * num_x + ii
+                hex_elements.append([b0, b1, b2, b3, t0, t1, t2, t3])
 
-                hex_elements.append([n0, n1, n2, n3, n4, n5, n6, n7])
-
-    connectivity = np.array(hex_elements, dtype=np.uint64)
-    return coords, connectivity
+    connect = np.array(hex_elements, dtype=np.int64)
+    return coords, connect
 
 
 def create_synthetic_simdata(
@@ -113,54 +112,55 @@ def create_synthetic_simdata(
     field_kind: str,
     num_times: int = SIM_TIMES_NUM,
 ) -> tuple[SimData, tuple[str, ...]]:
-    """Creates a synthetic SimData object with analytical polynomial fields."""
+    """Constructs synthetic FE simulation data for benchmarking."""
+    time_steps = np.linspace(0.0, 1.0, num_times, dtype=np.float64)
+
     if spatial_dims == 2:
         coords, connect = create_synthetic_mesh_2d()
         mesh_type = EMeshType.SURF
-    else:
+    elif spatial_dims == 3:
         coords, connect = create_synthetic_mesh_3d()
         mesh_type = EMeshType.VOL
+    else:
+        raise ValueError(f"Unsupported spatial dimension: {spatial_dims}")
 
     num_nodes = coords.shape[0]
-    time_steps = np.linspace(0.0, 1.0, num_times, dtype=np.float64)
+    xx = coords[:, 0, np.newaxis]
+    yy = coords[:, 1, np.newaxis]
+    zz = coords[:, 2, np.newaxis]
+    tt = time_steps[np.newaxis, :]
 
     node_vars: dict[str, np.ndarray] = {}
-    xx = coords[:, 0:1]
-    yy = coords[:, 1:2]
-    zz = coords[:, 2:3] if spatial_dims == 3 else np.zeros_like(xx)
-    tt = time_steps[np.newaxis, :]
 
     if field_kind == "scalar":
         comp_keys = ("temperature",)
         node_vars["temperature"] = (
-            100.0 + 2.0 * xx + 3.0 * yy + 4.0 * zz
-        ) * (1.0 + 0.5 * tt)
-
+            20.0 + (0.5 * xx + 0.3 * yy + 0.2 * zz) * (1.0 + 2.0 * tt)
+        )
     elif field_kind == "vector":
         if spatial_dims == 2:
-            comp_keys = ("ux", "uy")
-            node_vars["ux"] = (0.01 * xx + 0.02 * yy) * (1.0 + tt)
-            node_vars["uy"] = (0.02 * xx + 0.03 * yy) * (1.0 + 0.5 * tt)
+            comp_keys = ("disp_x", "disp_y")
+            node_vars["disp_x"] = (0.01 * xx) * (1.0 + tt)
+            node_vars["disp_y"] = (0.02 * yy) * (1.0 + 0.5 * tt)
         else:
-            comp_keys = ("ux", "uy", "uz")
-            node_vars["ux"] = (0.01 * xx + 0.02 * yy) * (1.0 + tt)
-            node_vars["uy"] = (0.02 * yy + 0.03 * zz) * (1.0 + 0.5 * tt)
-            node_vars["uz"] = (0.03 * zz + 0.01 * xx) * (1.0 + 0.25 * tt)
-
+            comp_keys = ("disp_x", "disp_y", "disp_z")
+            node_vars["disp_x"] = (0.01 * xx) * (1.0 + tt)
+            node_vars["disp_y"] = (0.02 * yy) * (1.0 + 0.5 * tt)
+            node_vars["disp_z"] = (0.005 * zz) * (1.0 + 0.25 * tt)
     elif field_kind == "tensor":
         if spatial_dims == 2:
             comp_keys = ("eps_xx", "eps_yy", "eps_xy")
-            node_vars["eps_xx"] = (0.001 * xx + 0.002 * yy) * (1.0 + tt)
-            node_vars["eps_yy"] = (0.002 * xx + 0.001 * yy) * (1.0 + 0.5 * tt)
+            node_vars["eps_xx"] = (0.001 * xx) * (1.0 + tt)
+            node_vars["eps_yy"] = (0.001 * yy) * (1.0 + 0.5 * tt)
             node_vars["eps_xy"] = (0.0005 * (xx + yy)) * (1.0 + 0.2 * tt)
         else:
             comp_keys = (
                 "eps_xx",
                 "eps_yy",
                 "eps_zz",
-                "eps_xy",
                 "eps_yz",
                 "eps_xz",
+                "eps_xy",
             )
             node_vars["eps_xx"] = (0.001 * xx) * (1.0 + tt)
             node_vars["eps_yy"] = (0.001 * yy) * (1.0 + 0.5 * tt)
@@ -245,6 +245,7 @@ def run_benchmark_case(
     spatial_dims: int,
     field_kind: str,
     use_temp_interp: bool,
+    mode: Literal["felix_only", "comp_pyvale"] = "comp_pyvale",
     num_sensors: int = SENSORS_NUM,
     num_sim_times: int = SIM_TIMES_NUM,
     num_sample_times: int = SAMPLE_TIMES_NUM,
@@ -252,7 +253,7 @@ def run_benchmark_case(
     num_runs: int = RUNS_PER_CASE,
     num_warmup: int = WARMUP_RUNS,
 ) -> Path:
-    """Executes a benchmark comparison between Pyvale and Felix."""
+    """Executes a benchmark run (Felix only or comparison with Pyvale)."""
     sim_data, comp_keys = create_synthetic_simdata(
         spatial_dims=spatial_dims,
         field_kind=field_kind,
@@ -280,65 +281,74 @@ def run_benchmark_case(
 
     edim = ps.EDim.TWOD if spatial_dims == 2 else ps.EDim.THREED
 
-    # Construct Pyvale sensor array
+    # Construct Felix sensor array
     if field_kind == "scalar":
-        field_pyvale = ps.FieldScalar(sim_data, comp_keys[0], edim)
         field_felix = fs.FieldScalar(sim_data, comp_keys[0], edim)
     elif field_kind == "vector":
-        field_pyvale = ps.FieldVector(sim_data, comp_keys, edim)
         field_felix = fs.FieldVector(sim_data, comp_keys, edim)
     elif field_kind == "tensor":
         num_norm = 2 if spatial_dims == 2 else 3
         norm_keys = comp_keys[:num_norm]
         dev_keys = comp_keys[num_norm:]
-        field_pyvale = ps.FieldTensor(sim_data, norm_keys, dev_keys, edim)
         field_felix = fs.FieldTensor(sim_data, norm_keys, dev_keys, edim)
     else:
         raise ValueError(f"Unknown field kind: {field_kind}")
 
-    sens_data_pyvale = ps.SensorData(
-        positions=positions,
-        sample_times=sample_times,
-        angles=angles,
-    )
     sens_data_felix = fs.SensorData(
         positions=positions,
         sample_times=sample_times,
         angles=angles,
     )
-
-    pyvale_sensors = ps.SensorsPoint(sens_data_pyvale, field_pyvale)
     felix_sensors = fs.SensorsPoint(sens_data_felix, field_felix)
 
     # Warmup runs
     for _ in range(num_warmup):
-        pyvale_sensors.calc_truth()
         felix_sensors.calc_truth()
 
-    # Numerical verification check
-    truth_pyvale = pyvale_sensors.calc_truth()
-    truth_felix = felix_sensors.calc_truth()
-    np.testing.assert_allclose(
-        truth_felix,
-        truth_pyvale,
-        rtol=1e-5,
-        atol=1e-5,
-        err_msg=f"Discrepancy detected in benchmark case {case_name}",
-    )
+    pyvale_sensors = None
+    if mode == "comp_pyvale":
+        if field_kind == "scalar":
+            field_pyvale = ps.FieldScalar(sim_data, comp_keys[0], edim)
+        elif field_kind == "vector":
+            field_pyvale = ps.FieldVector(sim_data, comp_keys, edim)
+        elif field_kind == "tensor":
+            num_norm = 2 if spatial_dims == 2 else 3
+            norm_keys = comp_keys[:num_norm]
+            dev_keys = comp_keys[num_norm:]
+            field_pyvale = ps.FieldTensor(sim_data, norm_keys, dev_keys, edim)
+
+        sens_data_pyvale = ps.SensorData(
+            positions=positions,
+            sample_times=sample_times,
+            angles=angles,
+        )
+        pyvale_sensors = ps.SensorsPoint(sens_data_pyvale, field_pyvale)
+
+        for _ in range(num_warmup):
+            pyvale_sensors.calc_truth()
+
+        truth_pyvale = pyvale_sensors.calc_truth()
+        truth_felix = felix_sensors.calc_truth()
+        np.testing.assert_allclose(
+            truth_felix,
+            truth_pyvale,
+            rtol=1e-5,
+            atol=1e-5,
+            err_msg=f"Discrepancy detected in benchmark case {case_name}",
+        )
 
     # Benchmark timing loop
     pyvale_times = []
     felix_times = []
 
     for _ in range(num_runs):
-        # Time Pyvale
-        start_py = time.perf_counter()
-        for _ in range(num_calls):
-            pyvale_sensors.calc_truth()
-        time_py = time.perf_counter() - start_py
-        pyvale_times.append(time_py)
+        if mode == "comp_pyvale" and pyvale_sensors is not None:
+            start_py = time.perf_counter()
+            for _ in range(num_calls):
+                pyvale_sensors.calc_truth()
+            time_py = time.perf_counter() - start_py
+            pyvale_times.append(time_py)
 
-        # Time Felix
         start_fx = time.perf_counter()
         for _ in range(num_calls):
             felix_sensors.calc_truth()
@@ -377,8 +387,19 @@ def run_benchmark_case(
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
-        for idx, (t_py, t_fx) in enumerate(zip(pyvale_times, felix_times)):
-            speedup = t_py / t_fx if t_fx > 0 else 0.0
+        for idx, t_fx in enumerate(felix_times):
+            if mode == "comp_pyvale" and pyvale_times:
+                t_py = pyvale_times[idx]
+                speedup = t_py / t_fx if t_fx > 0 else 0.0
+                py_per_call = t_py / num_calls
+                py_wall_str = str(t_py)
+                speedup_str = str(speedup)
+                py_call_str = str(py_per_call)
+            else:
+                py_wall_str = ""
+                speedup_str = ""
+                py_call_str = ""
+
             writer.writerow(
                 {
                     "run_idx": idx + 1,
@@ -390,28 +411,30 @@ def run_benchmark_case(
                     "sim_times_num": num_sim_times,
                     "sample_times_num": effective_sample_times,
                     "calc_meas_calls": num_calls,
-                    "pyvale_wall_s": t_py,
+                    "pyvale_wall_s": py_wall_str,
                     "felix_wall_s": t_fx,
-                    "speedup": speedup,
-                    "pyvale_s_per_call": t_py / num_calls,
+                    "speedup": speedup_str,
+                    "pyvale_s_per_call": py_call_str,
                     "felix_s_per_call": t_fx / num_calls,
                 }
             )
 
-    median_py = np.median(pyvale_times)
-    median_fx = np.median(felix_times)
-    median_speedup = median_py / median_fx if median_fx > 0 else 0.0
+    median_fx = float(np.median(felix_times))
 
     print(f"[{case_name}] Complete:")
-    print(
-        f"  Pyvale Median: {median_py:.4f} s "
-        f"({median_py/num_calls*1e6:.2f} µs/call)"
-    )
     print(
         f"  Felix  Median: {median_fx:.4f} s "
         f"({median_fx/num_calls*1e6:.2f} µs/call)"
     )
-    print(f"  Speedup Factor: {median_speedup:.2f}x")
-    print(f"  Output CSV:    {csv_file_path}")
 
+    if mode == "comp_pyvale" and pyvale_times:
+        median_py = float(np.median(pyvale_times))
+        median_speedup = median_py / median_fx if median_fx > 0 else 0.0
+        print(
+            f"  Pyvale Median: {median_py:.4f} s "
+            f"({median_py/num_calls*1e6:.2f} µs/call)"
+        )
+        print(f"  Speedup Factor: {median_speedup:.2f}x")
+
+    print(f"  Output CSV:    {csv_file_path}")
     return csv_file_path

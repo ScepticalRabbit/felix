@@ -47,9 +47,7 @@ def analyze_case_csv(csv_path: Path) -> dict:
     if not rows:
         return {}
 
-    py_times = np.array([float(r["pyvale_wall_s"]) for r in rows])
     fx_times = np.array([float(r["felix_wall_s"]) for r in rows])
-    speedups = np.array([float(r["speedup"]) for r in rows])
 
     first_row = rows[0]
     num_sensors = int(first_row["sensors_num"])
@@ -57,9 +55,33 @@ def analyze_case_csv(csv_path: Path) -> dict:
     num_calls = int(first_row["calc_meas_calls"])
     total_evals = num_sensors * num_samples * num_calls
 
-    py_med = float(np.median(py_times))
     fx_med = float(np.median(fx_times))
     fx_mean = float(np.mean(fx_times))
+
+    has_pyvale = bool(
+        "pyvale_wall_s" in first_row
+        and first_row["pyvale_wall_s"] != ""
+        and rows[0]["pyvale_wall_s"] != ""
+    )
+
+    if has_pyvale:
+        py_times = np.array([float(r["pyvale_wall_s"]) for r in rows])
+        speedups = np.array([float(r["speedup"]) for r in rows])
+        py_med = float(np.median(py_times))
+        py_mean = float(np.mean(py_times))
+        py_std = float(np.std(py_times))
+        py_min = float(np.min(py_times))
+        py_max = float(np.max(py_times))
+        speedup_med = py_med / fx_med if fx_med > 0 else 0.0
+        speedup_mean = float(np.mean(speedups))
+    else:
+        py_med = 0.0
+        py_mean = 0.0
+        py_std = 0.0
+        py_min = 0.0
+        py_max = 0.0
+        speedup_med = 1.0
+        speedup_mean = 1.0
 
     stats = {
         "case_name": first_row["case_name"],
@@ -70,18 +92,19 @@ def analyze_case_csv(csv_path: Path) -> dict:
         "sample_times_num": num_samples,
         "calc_meas_calls": num_calls,
         "runs_count": len(rows),
+        "has_pyvale": has_pyvale,
         "pyvale_median_s": py_med,
-        "pyvale_mean_s": float(np.mean(py_times)),
-        "pyvale_std_s": float(np.std(py_times)),
-        "pyvale_min_s": float(np.min(py_times)),
-        "pyvale_max_s": float(np.max(py_times)),
+        "pyvale_mean_s": py_mean,
+        "pyvale_std_s": py_std,
+        "pyvale_min_s": py_min,
+        "pyvale_max_s": py_max,
         "felix_median_s": fx_med,
         "felix_mean_s": fx_mean,
         "felix_std_s": float(np.std(fx_times)),
         "felix_min_s": float(np.min(fx_times)),
         "felix_max_s": float(np.max(fx_times)),
-        "speedup_median": py_med / fx_med if fx_med > 0 else 0.0,
-        "speedup_mean": float(np.mean(speedups)),
+        "speedup_median": speedup_med,
+        "speedup_mean": speedup_mean,
         "felix_evals_per_sec": total_evals / fx_med if fx_med > 0 else 0.0,
         "csv_source": str(csv_path),
     }
@@ -120,29 +143,67 @@ def generate_and_print_summary(
         for s in stats_list:
             writer.writerow(s)
 
+    has_any_pyvale = any(s.get("has_pyvale", False) for s in stats_list)
+
     # Print summary table
     print("\n" + "=" * 90)
-    print(f" FELIX vs PYVALE BENCHMARK SUMMARY ({timestamp_str})")
-    print("=" * 90)
-    header = (
-        f"{'Case Name':<32} | {'Dims':<4} | {'Field':<6} | {'Interp':<6} | "
-        f"{'Pyvale (s)':<11} | {'Felix (s)':<10} | {'Speedup':<8}"
+    title = (
+        f" FELIX vs PYVALE BENCHMARK SUMMARY ({timestamp_str})"
+        if has_any_pyvale
+        else f" FELIX BENCHMARK SUMMARY ({timestamp_str})"
     )
-    print(header)
-    print("-" * 90)
+    print(title)
+    print("=" * 90)
 
-    for s in stats_list:
-        c_name = s["case_name"]
-        dims = f"{s['spatial_dims']}D"
-        f_kind = s["field_kind"][:6]
-        interp = "Yes" if str(s["use_temp_interp"]).lower() == "true" else "No"
-        py_s = f"{s['pyvale_median_s']:.4f}"
-        fx_s = f"{s['felix_median_s']:.4f}"
-        spd = f"{s['speedup_median']:.2f}x"
-        print(
-            f"{c_name:<32} | {dims:<4} | {f_kind:<6} | {interp:<6} | "
-            f"{py_s:<11} | {fx_s:<10} | {spd:<8}"
+    if has_any_pyvale:
+        header = (
+            f"{'Case Name':<32} | {'Dims':<4} | {'Field':<6} | "
+            f"{'Interp':<6} | {'Pyvale (s)':<11} | {'Felix (s)':<10} | "
+            f"{'Speedup':<8}"
         )
+        print(header)
+        print("-" * 90)
+
+        for s in stats_list:
+            c_name = s["case_name"]
+            dims = f"{s['spatial_dims']}D"
+            f_kind = s["field_kind"][:6]
+            interp = (
+                "Yes"
+                if str(s["use_temp_interp"]).lower() == "true"
+                else "No"
+            )
+            py_s = f"{s['pyvale_median_s']:.4f}"
+            fx_s = f"{s['felix_median_s']:.4f}"
+            spd = f"{s['speedup_median']:.2f}x"
+            print(
+                f"{c_name:<32} | {dims:<4} | {f_kind:<6} | {interp:<6} | "
+                f"{py_s:<11} | {fx_s:<10} | {spd:<8}"
+            )
+    else:
+        header = (
+            f"{'Case Name':<32} | {'Dims':<4} | {'Field':<6} | "
+            f"{'Interp':<6} | {'Felix Median (s)':<17} | "
+            f"{'Evals / sec':<14}"
+        )
+        print(header)
+        print("-" * 90)
+
+        for s in stats_list:
+            c_name = s["case_name"]
+            dims = f"{s['spatial_dims']}D"
+            f_kind = s["field_kind"][:6]
+            interp = (
+                "Yes"
+                if str(s["use_temp_interp"]).lower() == "true"
+                else "No"
+            )
+            fx_s = f"{s['felix_median_s']:.4f}"
+            evals_s = f"{s['felix_evals_per_sec']:.2e}"
+            print(
+                f"{c_name:<32} | {dims:<4} | {f_kind:<6} | {interp:<6} | "
+                f"{fx_s:<17} | {evals_s:<14}"
+            )
 
     print("=" * 90)
     print(f"Summary CSV saved to: {summary_csv_path}\n")

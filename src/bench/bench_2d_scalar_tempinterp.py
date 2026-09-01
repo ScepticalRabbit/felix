@@ -6,17 +6,21 @@
 #
 # Authors: scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
+from typing import Literal
 from bench.bench_common import run_benchmark_case
 
 CASE_NAME = "bench_2d_scalar_tempinterp"
 
 
-def main() -> None:
+def main(
+    mode: Literal["felix_only", "comp_pyvale"] = "felix_only"
+) -> None:
     run_benchmark_case(
         case_name=CASE_NAME,
         spatial_dims=2,
         field_kind="scalar",
         use_temp_interp=True,
+        mode=mode,
     )
 
 
