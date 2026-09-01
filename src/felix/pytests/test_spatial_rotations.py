@@ -68,3 +68,78 @@ def test_tensor_rotation_transformation() -> None:
     assert np.isclose(sigma_local[1, 1], 75.0)
     assert np.isclose(sigma_local[0, 1], -25.0)
     assert np.isclose(sigma_local[1, 0], -25.0)
+
+
+def test_vector_2d_transform_with_felix_field() -> None:
+    from pyvale.dataio.simdata import SimData
+    import felix as fx
+
+    coords = np.array([
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ], dtype=np.float64)
+    connect = {"quad4": np.array([[0, 1, 2, 3]], dtype=np.int64)}
+    node_vars = {
+        "disp_x": np.array([[10.0], [10.0], [10.0], [10.0]]),
+        "disp_y": np.array([[0.0], [0.0], [0.0], [0.0]]),
+    }
+    sim_data = SimData(
+        num_spat_dims=2,
+        mesh_type=None,
+        time=np.array([0.0]),
+        coords=coords,
+        connect=connect,
+        node_vars=node_vars,
+    )
+    field = fx.FieldVector(sim_data, ("disp_x", "disp_y"), fx.EDim.TWOD)
+    rot = (Rotation.from_euler("z", 90.0, degrees=True),)
+    sens_data = fx.SensorData(
+        positions=np.array([[0.5, 0.5, 0.0]]),
+        angles=rot,
+    )
+    sensors = fx.SensorsPoint(sens_data, field)
+    truth = sensors.calc_truth()
+    # Rotated by 90 deg: local x = global y = 0, local y = -global x = -10
+    assert np.isclose(truth[0, 0, 0], 0.0, atol=1e-6)
+    assert np.isclose(truth[0, 1, 0], -10.0, atol=1e-6)
+
+
+def test_tensor_2d_transform_with_felix_field() -> None:
+    from pyvale.dataio.simdata import SimData
+    import felix as fx
+
+    coords = np.array([
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ], dtype=np.float64)
+    connect = {"quad4": np.array([[0, 1, 2, 3]], dtype=np.int64)}
+    node_vars = {
+        "eps_xx": np.array([[100.0], [100.0], [100.0], [100.0]]),
+        "eps_yy": np.array([[50.0], [50.0], [50.0], [50.0]]),
+        "eps_xy": np.array([[0.0], [0.0], [0.0], [0.0]]),
+    }
+    sim_data = SimData(
+        num_spat_dims=2,
+        mesh_type=None,
+        time=np.array([0.0]),
+        coords=coords,
+        connect=connect,
+        node_vars=node_vars,
+    )
+    field = fx.FieldTensor(
+        sim_data, ("eps_xx", "eps_yy"), ("eps_xy",), fx.EDim.TWOD
+    )
+    rot = (Rotation.from_euler("z", 45.0, degrees=True),)
+    sens_data = fx.SensorData(
+        positions=np.array([[0.5, 0.5, 0.0]]),
+        angles=rot,
+    )
+    sensors = fx.SensorsPoint(sens_data, field)
+    truth = sensors.calc_truth()
+    assert np.isclose(truth[0, 0, 0], 75.0, atol=1e-6)
+    assert np.isclose(truth[0, 1, 0], 75.0, atol=1e-6)
+    assert np.isclose(truth[0, 2, 0], -25.0, atol=1e-6)

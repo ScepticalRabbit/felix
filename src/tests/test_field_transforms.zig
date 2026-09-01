@@ -135,3 +135,72 @@ test "2D Principal stresses" {
         common.isApproxEqual(max_shear, 25.0, tcfg.REL_TOL, tcfg.ABS_TOL),
     );
 }
+
+test "2D tensor rotation transformation" {
+    const angle_rad: F = std.math.pi / 4.0;
+    const cos_theta = @cos(angle_rad);
+    const sin_theta = @sin(angle_rad);
+
+    const rot_mat_22 = [4]F{
+        cos_theta, -sin_theta,
+        sin_theta, cos_theta,
+    };
+
+    var out_s_xx: F = 0.0;
+    var out_s_yy: F = 0.0;
+    var out_s_xy: F = 0.0;
+    transforms.transformTensor2D(
+        &rot_mat_22,
+        100.0,
+        50.0,
+        0.0,
+        &out_s_xx,
+        &out_s_yy,
+        &out_s_xy,
+    );
+
+    try std.testing.expect(
+        common.isApproxEqual(out_s_xx, 75.0, tcfg.REL_TOL, tcfg.ABS_TOL),
+    );
+    try std.testing.expect(
+        common.isApproxEqual(out_s_yy, 75.0, tcfg.REL_TOL, tcfg.ABS_TOL),
+    );
+    try std.testing.expect(
+        common.isApproxEqual(out_s_xy, 25.0, tcfg.REL_TOL, tcfg.ABS_TOL),
+    );
+}
+
+test "3D tensor rotation transformation" {
+    const angle_rad: F = std.math.pi / 4.0;
+    const cos_theta = @cos(angle_rad);
+    const sin_theta = @sin(angle_rad);
+
+    const rot_mat_33 = [9]F{
+        cos_theta, -sin_theta, 0.0,
+        sin_theta, cos_theta,  0.0,
+        0.0,       0.0,        1.0,
+    };
+
+    const in_tensor_6 = [6]F{ 100.0, 50.0, 10.0, 0.0, 0.0, 0.0 };
+    var out_tensor_6: [6]F = undefined;
+    transforms.transformTensor3D(&rot_mat_33, &in_tensor_6, &out_tensor_6);
+
+    try std.testing.expect(
+        common.isApproxEqual(out_tensor_6[0], 75.0, tcfg.REL_TOL, tcfg.ABS_TOL),
+    );
+    try std.testing.expect(
+        common.isApproxEqual(out_tensor_6[1], 75.0, tcfg.REL_TOL, tcfg.ABS_TOL),
+    );
+    try std.testing.expect(
+        common.isApproxEqual(out_tensor_6[2], 10.0, tcfg.REL_TOL, tcfg.ABS_TOL),
+    );
+    try std.testing.expect(
+        common.isApproxEqual(out_tensor_6[3], 25.0, tcfg.REL_TOL, tcfg.ABS_TOL),
+    );
+    try std.testing.expect(
+        common.isApproxEqual(out_tensor_6[4], 0.0, tcfg.REL_TOL, tcfg.ABS_TOL),
+    );
+    try std.testing.expect(
+        common.isApproxEqual(out_tensor_6[5], 0.0, tcfg.REL_TOL, tcfg.ABS_TOL),
+    );
+}
