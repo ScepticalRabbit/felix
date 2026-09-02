@@ -61,6 +61,88 @@ fn jobExperimentChunk(
     }
 }
 
+pub const FelixThreadPool = struct {
+    threaded_io: std.Io.Threaded,
+    workers_num: u16,
+
+    pub fn init(
+        outer_alloc: std.mem.Allocator,
+        workers_num: u16,
+    ) FelixThreadPool {
+        const effective_workers = if (workers_num == 0)
+            @as(u16, @intCast(@min(@as(usize, 64), std.Thread.getCpuCount() catch 1)))
+        else
+            workers_num;
+        return .{
+            .threaded_io = pce.initThreadedIo(outer_alloc, effective_workers),
+            .workers_num = effective_workers,
+        };
+    }
+
+    pub fn deinit(self: *FelixThreadPool) void {
+        self.threaded_io.deinit();
+    }
+
+    pub fn runExperimentSimulation(
+        self: *FelixThreadPool,
+        mesh_in: *const SimMeshInput,
+        sensor_in: *const SensorArrayInput,
+        error_specs_ptr: [*c]const ErrorSpec,
+        num_errors: usize,
+        out_truth_all: [*c]F,
+        out_meas_all: [*c]F,
+        out_errs_total_all: ?[*c]F,
+        num_experiments: usize,
+        base_seed: u64,
+        seed_stride: u64,
+        grain_size: usize,
+    ) !void {
+        if (num_experiments == 0) {
+            return;
+        }
+
+        const num_sensors = sensor_in.num_sensors;
+        const num_comps = mesh_in.num_components;
+        const num_out_times = if (sensor_in.num_sample_times > 0)
+            sensor_in.num_sample_times
+        else
+            mesh_in.num_sim_times;
+        const exp_stride = num_sensors * num_comps * num_out_times;
+
+        const ctx = ExpSimParallelContext{
+            .mesh_in = mesh_in,
+            .sensor_in = sensor_in,
+            .error_specs_ptr = error_specs_ptr,
+            .num_errors = num_errors,
+            .out_truth_all = out_truth_all,
+            .out_meas_all = out_meas_all,
+            .out_errs_total_all = out_errs_total_all,
+            .exp_stride = exp_stride,
+            .base_seed = base_seed,
+            .seed_stride = seed_stride,
+        };
+
+        if (self.workers_num <= 1 or num_experiments <= 1) {
+            jobExperimentChunk(@constCast(&ctx), 0, 0, num_experiments);
+            return;
+        }
+
+        const io = self.threaded_io.io();
+        const effective_grain = if (grain_size == 0)
+            @max(@as(usize, 1), num_experiments / (self.workers_num * 4))
+        else
+            grain_size;
+
+        var chunk_exec = pce.ParaChunkExecutor.init(io, self.workers_num);
+        try chunk_exec.runDynRange(
+            @constCast(&ctx),
+            jobExperimentChunk,
+            num_experiments,
+            effective_grain,
+        );
+    }
+};
+
 pub fn runExperimentSimulationParallel(
     outer_alloc: std.mem.Allocator,
     mesh_in: *const SimMeshInput,
@@ -76,51 +158,19 @@ pub fn runExperimentSimulationParallel(
     workers_num: u16,
     grain_size: usize,
 ) !void {
-    if (num_experiments == 0) {
-        return;
-    }
-
-    const num_sensors = sensor_in.num_sensors;
-    const num_comps = mesh_in.num_components;
-    const num_out_times = if (sensor_in.num_sample_times > 0)
-        sensor_in.num_sample_times
-    else
-        mesh_in.num_sim_times;
-    const exp_stride = num_sensors * num_comps * num_out_times;
-
-    const ctx = ExpSimParallelContext{
-        .mesh_in = mesh_in,
-        .sensor_in = sensor_in,
-        .error_specs_ptr = error_specs_ptr,
-        .num_errors = num_errors,
-        .out_truth_all = out_truth_all,
-        .out_meas_all = out_meas_all,
-        .out_errs_total_all = out_errs_total_all,
-        .exp_stride = exp_stride,
-        .base_seed = base_seed,
-        .seed_stride = seed_stride,
-    };
-
-    const effective_workers = if (workers_num == 0)
-        @as(u16, @intCast(@min(@as(usize, 64), std.Thread.getCpuCount() catch 1)))
-    else
-        workers_num;
-
-    if (effective_workers <= 1 or num_experiments <= 1) {
-        jobExperimentChunk(@constCast(&ctx), 0, 0, num_experiments);
-        return;
-    }
-
-    var threaded_io = pce.initThreadedIo(outer_alloc, effective_workers);
-    defer threaded_io.deinit();
-    const io = threaded_io.io();
-
-    const effective_grain = if (grain_size == 0) 1 else grain_size;
-    var chunk_exec = pce.ParaChunkExecutor.init(io, effective_workers);
-    try chunk_exec.runDynRange(
-        @constCast(&ctx),
-        jobExperimentChunk,
+    var pool = FelixThreadPool.init(outer_alloc, workers_num);
+    defer pool.deinit();
+    try pool.runExperimentSimulation(
+        mesh_in,
+        sensor_in,
+        error_specs_ptr,
+        num_errors,
+        out_truth_all,
+        out_meas_all,
+        out_errs_total_all,
         num_experiments,
-        effective_grain,
+        base_seed,
+        seed_stride,
+        grain_size,
     );
 }
