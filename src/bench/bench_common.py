@@ -9,14 +9,19 @@
 import csv
 from datetime import datetime
 from pathlib import Path
+import sys
 import time
 from typing import Literal
+import unittest.mock
+
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+sys.modules.setdefault("bpy", unittest.mock.MagicMock())
+
 import pyvale.sensorsim as ps
 import felix as fs
-from pyvale.dataio.simdata import SimData, EMeshType
+from pyvale.dataio.simdata import SimData
 
 
 from bench.benchparams import (
@@ -118,10 +123,8 @@ def create_synthetic_simdata(
 
     if spatial_dims == 2:
         coords, connect = create_synthetic_mesh_2d()
-        mesh_type = EMeshType.SURF
     elif spatial_dims == 3:
         coords, connect = create_synthetic_mesh_3d()
-        mesh_type = EMeshType.VOL
     else:
         raise ValueError(f"Unsupported spatial dimension: {spatial_dims}")
 
@@ -178,7 +181,6 @@ def create_synthetic_simdata(
 
     sim_data = SimData(
         num_spat_dims=spatial_dims,
-        mesh_type=mesh_type,
         time=time_steps,
         coords=coords,
         connect=connect_dict,

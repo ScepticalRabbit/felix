@@ -87,7 +87,6 @@ def test_vector_2d_transform_with_felix_field() -> None:
     }
     sim_data = SimData(
         num_spat_dims=2,
-        mesh_type=None,
         time=np.array([0.0]),
         coords=coords,
         connect=connect,
@@ -124,7 +123,6 @@ def test_tensor_2d_transform_with_felix_field() -> None:
     }
     sim_data = SimData(
         num_spat_dims=2,
-        mesh_type=None,
         time=np.array([0.0]),
         coords=coords,
         connect=connect,

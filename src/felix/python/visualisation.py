@@ -6,16 +6,23 @@
 #
 # Authors: scepticalrabbit (Lloyd Fletcher)
 # ==============================================================================
-from pyvale.sensorsim.experimentsimio import load_exp_sim_data, save_exp_sim_data
-from pyvale.sensorsim.visualexpplotter import *
-from pyvale.sensorsim.visualimages import *
-from pyvale.sensorsim.visualopts import *
-from pyvale.sensorsim.visualsimanimator import *
-from pyvale.sensorsim.visualsimplotter import *
-from pyvale.sensorsim.visualsimsensors import *
-from pyvale.sensorsim.visualtools import *
-from pyvale.sensorsim.visualtraceanimator import *
-from pyvale.sensorsim.visualtraceplotter import *
+try:
+    from pyvale.sensorsim.experimentsimio import (
+        load_exp_sim_data,
+        save_exp_sim_data,
+    )
+    from pyvale.sensorsim.visualexpplotter import *
+    from pyvale.sensorsim.visualimages import *
+    from pyvale.sensorsim.visualopts import *
+    from pyvale.sensorsim.visualsimanimator import *
+    from pyvale.sensorsim.visualsimplotter import *
+    from pyvale.sensorsim.visualsimsensors import *
+    from pyvale.sensorsim.visualtools import *
+    from pyvale.sensorsim.visualtraceanimator import *
+    from pyvale.sensorsim.visualtraceplotter import *
+    from pyvale.sensorsim.visualsensormeshes import *
+except (ImportError, ModuleNotFoundError, NameError):
+    pass
 
 
 __all__ = [name for name in globals() if not name.startswith("_")]

@@ -8,7 +8,10 @@
 # ==============================================================================
 import os
 import sys
+import unittest.mock
 from collections.abc import Generator
+
+sys.modules.setdefault("bpy", unittest.mock.MagicMock())
 
 # Set up headless rendering BEFORE any imports
 os.environ["MPLBACKEND"] = "Agg"

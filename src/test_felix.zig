@@ -16,6 +16,8 @@ pub const error_chains = @import("tests/test_error_chains.zig");
 pub const err_graph = @import("tests/test_err_graph.zig");
 pub const point_sensors = @import("tests/test_point_sensors.zig");
 pub const monoblock_e2e = @import("tests/test_monoblock_e2e.zig");
+pub const parachunkexec = @import("tests/test_parachunkexec.zig");
+pub const experiment_sim = @import("tests/test_experiment_sim.zig");
 
 test {
     std.testing.refAllDecls(@This());

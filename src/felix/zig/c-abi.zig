@@ -18,6 +18,7 @@ const err_graph = @import("err_graph.zig");
 const kernels = @import("kernels.zig");
 const quadrature = @import("quadrature.zig");
 const tensor_invariants = @import("tensor_invariants.zig");
+const exp_sim = @import("experiment_sim.zig");
 
 const F: type = f64;
 
@@ -545,5 +546,48 @@ pub export fn felixTransformTensorArray3D(
         inv_type,
         out_derived_ptr,
     );
+    return 0;
+}
+
+pub export fn felixRunExperimentSimulationParallel(
+    mesh_in: [*c]const sensor_sim.SimMeshInput,
+    sensor_in: [*c]const sensor_sim.SensorArrayInput,
+    error_specs_ptr: [*c]const sensor_sim.ErrorSpec,
+    num_errors: usize,
+    out_truth_all: [*c]F,
+    out_meas_all: [*c]F,
+    out_errs_total_all: [*c]F,
+    num_experiments: usize,
+    base_seed: u64,
+    seed_stride: u64,
+    workers_num: u16,
+    grain_size: usize,
+) i32 {
+    if (mesh_in == null or sensor_in == null or
+        out_truth_all == null or out_meas_all == null)
+    {
+        setLastErrorSlice(
+            "Null pointer passed to felixRunExperimentSimulationParallel",
+        );
+        return -1;
+    }
+    exp_sim.runExperimentSimulationParallel(
+        std.heap.c_allocator,
+        mesh_in,
+        sensor_in,
+        error_specs_ptr,
+        num_errors,
+        out_truth_all,
+        out_meas_all,
+        out_errs_total_all,
+        num_experiments,
+        base_seed,
+        seed_stride,
+        workers_num,
+        grain_size,
+    ) catch |err| {
+        setLastError(err);
+        return -1;
+    };
     return 0;
 }

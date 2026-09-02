@@ -34,6 +34,9 @@ class ExpSimSaveKeys:
 @dataclass(slots=True)
 class ExpSimOpts:
     workers: int = 1
+    num_threads: int = 1
+    grain_size: int = 1
+    seed_stride: int = 1000
     para: EExpSimPara = EExpSimPara.ALL
     save_keys: ExpSimSaveKeys = field(default_factory=ExpSimSaveKeys)
     num_experiments: int = 100
@@ -69,11 +72,22 @@ class ExperimentSimulator:
     ) -> dict[tuple[str, str, str], np.ndarray]:
         results: dict[tuple[str, str, str], np.ndarray] = {}
         seed = 0 if self._opts.seed is None else self._opts.seed
+        threads = (
+            self._opts.num_threads
+            if self._opts.num_threads != 1
+            else self._opts.workers
+        )
         for sim_key, sim_data in self._sims.items():
             for sens_key, sensors in self._sensors.items():
                 sensors.get_field().set_sim_data(sim_data)
                 truth, meas, sys, rand, _, pert_pos, pert_times = (
-                    sensors.sim_experiments(num_exp_per_sim, seed)
+                    sensors.sim_experiments(
+                        num_exp_per_sim,
+                        seed=seed,
+                        num_threads=threads,
+                        seed_stride=self._opts.seed_stride,
+                        grain_size=self._opts.grain_size,
+                    )
                 )
                 keys = self._opts.save_keys
                 if keys.meas:

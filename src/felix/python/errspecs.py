@@ -96,6 +96,42 @@ class GenLogNormal(IGenRandom):
         return _gen_spec(7, self.mean, self.sigma, 0.0, self.seed)
 
 
+@dataclass(slots=True)
+class GenChiSquare(IGenRandom):
+    dofs: float = 1.0
+    seed: int | None = None
+
+    def to_spec_dict(self) -> dict:
+        return _gen_spec(8, self.dofs, 0.0, 0.0, self.seed)
+
+
+@dataclass(slots=True)
+class GenDirichlet(IGenRandom):
+    alpha: tuple[float, ...] = (1.0, 1.0)
+    seed: int | None = None
+
+    def to_spec_dict(self) -> dict:
+        return _gen_spec(9, 0.0, 0.0, 0.0, self.seed)
+
+
+@dataclass(slots=True)
+class GenF(IGenRandom):
+    dofs: tuple[float, float] = (1.0, 1.0)
+    seed: int | None = None
+
+    def to_spec_dict(self) -> dict:
+        return _gen_spec(10, self.dofs[0], self.dofs[1], 0.0, self.seed)
+
+
+@dataclass(slots=True)
+class GenStandardT(IGenRandom):
+    dofs: float = 1.0
+    seed: int | None = None
+
+    def to_spec_dict(self) -> dict:
+        return _gen_spec(11, self.dofs, 0.0, 0.0, self.seed)
+
+
 class IErrSimulator:
     """Compatibility adapter for a Zig error specification."""
 
@@ -142,10 +178,23 @@ class ErrSysOffsetPercent(IErrSimulator):
         )
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, init=False)
 class ErrSysGen(IErrSimulator):
     generator: IGenRandom
-    err_dep: EErrDep = EErrDep.INDEPENDENT
+    err_dep: EErrDep
+
+    def __init__(
+        self,
+        generator: IGenRandom | None = None,
+        err_dep: EErrDep = EErrDep.INDEPENDENT,
+        gen: IGenRandom | None = None,
+        gen_rand: IGenRandom | None = None,
+    ) -> None:
+        g = generator or gen or gen_rand
+        if g is None:
+            raise ValueError("A random generator must be provided")
+        self.generator = g
+        self.err_dep = err_dep
 
     def get_error_type(self) -> EErrType:
         return EErrType.SYSTEMATIC
@@ -154,10 +203,23 @@ class ErrSysGen(IErrSimulator):
         return _generator_error_spec(2, EErrType.SYSTEMATIC, self)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, init=False)
 class ErrSysGenPercent(IErrSimulator):
     generator: IGenRandom
-    err_dep: EErrDep = EErrDep.INDEPENDENT
+    err_dep: EErrDep
+
+    def __init__(
+        self,
+        generator: IGenRandom | None = None,
+        err_dep: EErrDep = EErrDep.INDEPENDENT,
+        gen: IGenRandom | None = None,
+        gen_rand: IGenRandom | None = None,
+    ) -> None:
+        g = generator or gen or gen_rand
+        if g is None:
+            raise ValueError("A random generator must be provided")
+        self.generator = g
+        self.err_dep = err_dep
 
     def get_error_type(self) -> EErrType:
         return EErrType.SYSTEMATIC
@@ -166,10 +228,23 @@ class ErrSysGenPercent(IErrSimulator):
         return _generator_error_spec(3, EErrType.SYSTEMATIC, self)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, init=False)
 class ErrRandGen(IErrSimulator):
     generator: IGenRandom
-    err_dep: EErrDep = EErrDep.INDEPENDENT
+    err_dep: EErrDep
+
+    def __init__(
+        self,
+        generator: IGenRandom | None = None,
+        err_dep: EErrDep = EErrDep.INDEPENDENT,
+        gen: IGenRandom | None = None,
+        gen_rand: IGenRandom | None = None,
+    ) -> None:
+        g = generator or gen or gen_rand
+        if g is None:
+            raise ValueError("A random generator must be provided")
+        self.generator = g
+        self.err_dep = err_dep
 
     def get_error_type(self) -> EErrType:
         return EErrType.RANDOM
@@ -178,10 +253,23 @@ class ErrRandGen(IErrSimulator):
         return _generator_error_spec(4, EErrType.RANDOM, self)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, init=False)
 class ErrRandGenPercent(IErrSimulator):
     generator: IGenRandom
-    err_dep: EErrDep = EErrDep.INDEPENDENT
+    err_dep: EErrDep
+
+    def __init__(
+        self,
+        generator: IGenRandom | None = None,
+        err_dep: EErrDep = EErrDep.INDEPENDENT,
+        gen: IGenRandom | None = None,
+        gen_rand: IGenRandom | None = None,
+    ) -> None:
+        g = generator or gen or gen_rand
+        if g is None:
+            raise ValueError("A random generator must be provided")
+        self.generator = g
+        self.err_dep = err_dep
 
     def get_error_type(self) -> EErrType:
         return EErrType.RANDOM

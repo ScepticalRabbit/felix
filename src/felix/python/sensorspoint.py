@@ -319,6 +319,9 @@ class SensorsPoint:
         self,
         num_experiments: int,
         seed: int = 0,
+        num_threads: int = 1,
+        seed_stride: int = 1000,
+        grain_size: int = 1,
     ) -> tuple[np.ndarray, ...]:
         if self._sensor_data.positions is None:
             raise ValueError("SensorData.positions must be provided")
@@ -350,6 +353,9 @@ class SensorsPoint:
             num_experiments,
             seed,
             binding=self._binding,
+            num_threads=num_threads,
+            seed_stride=seed_stride,
+            grain_size=grain_size,
         )
 
     def _simulate(self, specs: list[dict] | None) -> tuple[np.ndarray, ...]:

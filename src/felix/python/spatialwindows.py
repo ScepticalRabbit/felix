@@ -361,9 +361,73 @@ class SpatialWindowBox3D(ISpatialWindow):
         return local_pts, int_weights
 
 
+class SpatialWindowCylinder(ISpatialWindow):
+    """3D cylindrical support window along sensor's local Z axis."""
+
+    __slots__ = ("_radius", "_height", "_rule", "_kernel")
+
+    def __init__(
+        self,
+        radius: float,
+        height: float,
+        rule: IIntegrationRule | None = None,
+        kernel: ISpatialKernel | None = None,
+    ) -> None:
+        self._radius = float(radius)
+        self._height = float(height)
+        if rule is None:
+            rule = IntegrationGaussLegendre(order=(3, 6, 2))
+        self._rule = rule
+        if kernel is None:
+            kernel = SpatialKernelUniform()
+        self._kernel = kernel
+
+    def get_spatial_dims(self) -> int:
+        return 3
+
+    def get_measure(self) -> float:
+        return np.pi * (self._radius**2) * self._height
+
+    def get_effective_measure(self) -> float:
+        _, weights = self.get_local_points_and_weights(
+            mode=EIntegrationMode.ACCUMULATE
+        )
+        return float(np.sum(weights))
+
+    def get_local_points_and_weights(
+        self, mode: EIntegrationMode = EIntegrationMode.AVERAGE
+    ) -> tuple[np.ndarray, np.ndarray]:
+        nodes_canon, weights_canon = self._rule.get_nodes_and_weights(dims=3)
+        r_vals = 0.5 * self._radius * (nodes_canon[:, 0] + 1.0)
+        theta_vals = np.pi * (nodes_canon[:, 1] + 1.0)
+        z_vals = 0.5 * self._height * nodes_canon[:, 2]
+
+        jacobian = (
+            r_vals * (0.5 * self._radius) * np.pi * (0.5 * self._height)
+        )
+        raw_weights = weights_canon * jacobian
+
+        local_pts = np.zeros((nodes_canon.shape[0], 3), dtype=float)
+        local_pts[:, 0] = r_vals * np.cos(theta_vals)
+        local_pts[:, 1] = r_vals * np.sin(theta_vals)
+        local_pts[:, 2] = z_vals
+
+        kernel_weights = self._kernel.eval_weights(local_pts)
+        composite_weights = raw_weights * kernel_weights
+
+        if mode == EIntegrationMode.AVERAGE:
+            tot = np.sum(composite_weights)
+            norm_w = (
+                composite_weights / tot if tot > 0.0 else composite_weights
+            )
+            return local_pts, norm_w
+        return local_pts, composite_weights
+
+
 SpatialWindowLine = SpatialWindowLine1D
 SpatialWindowRectangle = SpatialWindowRect2D
 SpatialWindowCircle = SpatialWindowCircle2D
 SpatialWindowDisk = SpatialWindowCircle2D
 SpatialWindowSphere = SpatialWindowSphere3D
 SpatialWindowBox = SpatialWindowBox3D
+SpatialWindowCylinder3D = SpatialWindowCylinder

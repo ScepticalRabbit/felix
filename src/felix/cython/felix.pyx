@@ -9,7 +9,7 @@
 # --------------------------------------------------------------------------
 cimport cython
 from libc.stdlib cimport malloc, free
-from libc.stdint cimport uint8_t, uint32_t, uint64_t
+from libc.stdint cimport uint8_t, uint16_t, uint32_t, uint64_t
 cimport numpy as cnp
 import numpy as np
 
@@ -82,6 +82,9 @@ def sample_field_config(
     size_t num_experiments=1,
     uint64_t experiment_seed=0,
     object binding=None,
+    int num_threads=1,
+    uint64_t seed_stride=1000,
+    size_t grain_size=1,
 ):
     """Marshal a Felix field configuration and execute it in Zig."""
     sim_data = field.get_sim_data()
@@ -159,6 +162,9 @@ def sample_field_config(
         num_experiments=num_experiments,
         experiment_seed=experiment_seed,
         binding=binding,
+        num_threads=num_threads,
+        seed_stride=seed_stride,
+        grain_size=grain_size,
     )
 
 
@@ -262,6 +268,9 @@ def simulate_point_sensors(
     size_t num_experiments=1,
     uint64_t experiment_seed=0,
     object binding=None,
+    int num_threads=1,
+    uint64_t seed_stride=1000,
+    size_t grain_size=1,
 ):
     """Run full point sensor simulation in Zig."""
     cdef cnp.ndarray[double, ndim=2, mode="c"] coords_c = np.ascontiguousarray(
@@ -572,21 +581,21 @@ def simulate_point_sensors(
                 <double *>errs_total.data,
             )
         else:
-            status = cf.felixSimulatePointSensorExperiments(
-                &mesh_in,
-                &sensor_in,
-                error_specs_ptr,
-                num_errors,
-                num_experiments,
-                experiment_seed,
-                <double *>truth.data,
-                <double *>meas.data,
-                <double *>errs_sys.data,
-                <double *>errs_rand.data,
-                <double *>errs_total.data,
-                <double *>pert_positions.data,
-                <double *>pert_times.data,
-            )
+            with nogil:
+                status = cf.felixRunExperimentSimulationParallel(
+                    &mesh_in,
+                    &sensor_in,
+                    error_specs_ptr,
+                    num_errors,
+                    <double *>truth.data,
+                    <double *>meas.data,
+                    <double *>errs_total.data,
+                    num_experiments,
+                    experiment_seed,
+                    seed_stride,
+                    <uint16_t>num_threads,
+                    grain_size,
+                )
         if status != 0:
             err_msg = get_last_error()
             raise RuntimeError(f"Felix simulation failed: {err_msg}")

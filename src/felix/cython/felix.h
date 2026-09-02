@@ -283,6 +283,21 @@ int felixTransformTensorArray3D(
     double       *out_derived_ptr
 );
 
+int felixRunExperimentSimulationParallel(
+    const SimMeshInput      *mesh_in_ptr,
+    const SensorArrayInput  *sensor_in_ptr,
+    const ErrorSpec         *error_specs_ptr,
+    size_t                   num_errors,
+    double                  *out_truth_all_ptr,
+    double                  *out_meas_all_ptr,
+    double                  *out_errs_total_all_ptr,
+    size_t                   num_experiments,
+    uint64_t                 base_seed,
+    uint64_t                 seed_stride,
+    uint16_t                 workers_num,
+    size_t                   grain_size
+);
+
 #ifdef __cplusplus
 }
 #endif

@@ -10,7 +10,10 @@ from dataclasses import dataclass
 from typing import Sequence, TypeAlias
 
 import numpy as np
-from pyvale.dataio.meshconv import enforce_mesh_convention
+try:
+    from pyvale.dataio.meshtools import enforce_mesh_convention
+except ImportError:
+    from pyvale.dataio.meshconv import enforce_mesh_convention
 from pyvale.dataio.simdata import SimData
 from scipy.spatial.transform import Rotation
 
