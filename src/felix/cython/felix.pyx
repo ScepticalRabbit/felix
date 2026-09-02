@@ -32,6 +32,26 @@ cdef class PySensorMeshBinding:
         return self.binding.num_sensors
 
 
+cdef class PyFelixThreadPool:
+    cdef void *pool_ptr
+    cdef uint16_t workers_num
+
+    def __cinit__(self, uint16_t workers_num=0):
+        self.workers_num = workers_num
+        self.pool_ptr = cf.felixCreateThreadPool(workers_num)
+        if self.pool_ptr == NULL:
+            raise MemoryError("Failed to create Felix thread pool")
+
+    def __dealloc__(self):
+        if self.pool_ptr != NULL:
+            cf.felixDestroyThreadPool(self.pool_ptr)
+            self.pool_ptr = NULL
+
+    @property
+    def num_workers(self) -> int:
+        return self.workers_num
+
+
 def bind_sensors_to_mesh(
     cnp.ndarray coords,
     cnp.ndarray connect,
@@ -85,6 +105,10 @@ def sample_field_config(
     int num_threads=1,
     uint64_t seed_stride=1000,
     size_t grain_size=1,
+    object thread_pool=None,
+    cnp.ndarray out_truth=None,
+    cnp.ndarray out_meas=None,
+    cnp.ndarray out_errs_total=None,
 ):
     """Marshal a Felix field configuration and execute it in Zig."""
     sim_data = field.get_sim_data()
@@ -165,6 +189,10 @@ def sample_field_config(
         num_threads=num_threads,
         seed_stride=seed_stride,
         grain_size=grain_size,
+        thread_pool=thread_pool,
+        out_truth=out_truth,
+        out_meas=out_meas,
+        out_errs_total=out_errs_total,
     )
 
 
@@ -271,6 +299,10 @@ def simulate_point_sensors(
     int num_threads=1,
     uint64_t seed_stride=1000,
     size_t grain_size=1,
+    object thread_pool=None,
+    cnp.ndarray out_truth=None,
+    cnp.ndarray out_meas=None,
+    cnp.ndarray out_errs_total=None,
 ):
     """Run full point sensor simulation in Zig."""
     cdef cnp.ndarray[double, ndim=2, mode="c"] coords_c = np.ascontiguousarray(
@@ -555,17 +587,50 @@ def simulate_point_sensors(
     result_shape = (n_sensors, n_comps, n_out_times)
     if num_experiments > 1:
         result_shape = (num_experiments,) + result_shape
-    cdef cnp.ndarray truth = np.zeros(result_shape, dtype=np.float64)
-    cdef cnp.ndarray meas = np.zeros(result_shape, dtype=np.float64)
-    cdef cnp.ndarray errs_sys = np.zeros(result_shape, dtype=np.float64)
-    cdef cnp.ndarray errs_rand = np.zeros(result_shape, dtype=np.float64)
-    cdef cnp.ndarray errs_total = np.zeros(result_shape, dtype=np.float64)
+
+    cdef cnp.ndarray truth
+    cdef cnp.ndarray meas
+    cdef cnp.ndarray errs_sys
+    cdef cnp.ndarray errs_rand
+    cdef cnp.ndarray errs_total
+
+    if out_truth is not None:
+        truth = np.ascontiguousarray(out_truth, dtype=np.float64)
+    else:
+        truth = np.empty(result_shape, dtype=np.float64)
+        truth.fill(0.0)
+
+    if out_meas is not None:
+        meas = np.ascontiguousarray(out_meas, dtype=np.float64)
+    else:
+        meas = np.empty(result_shape, dtype=np.float64)
+        meas.fill(0.0)
+
+    if out_errs_total is not None:
+        errs_total = np.ascontiguousarray(out_errs_total, dtype=np.float64)
+    else:
+        errs_total = np.empty(result_shape, dtype=np.float64)
+        errs_total.fill(0.0)
+
+    if num_experiments == 1:
+        errs_sys = np.empty(result_shape, dtype=np.float64)
+        errs_sys.fill(0.0)
+        errs_rand = np.empty(result_shape, dtype=np.float64)
+        errs_rand.fill(0.0)
+    else:
+        errs_sys = errs_total
+        errs_rand = errs_total
+
     cdef cnp.ndarray pert_positions = np.empty(
         (num_experiments, n_sensors, 3), dtype=np.float64
     )
     cdef cnp.ndarray pert_times = np.empty(
         (num_experiments, n_out_times), dtype=np.float64
     )
+
+    cdef PyFelixThreadPool py_pool_obj = None
+    if thread_pool is not None and isinstance(thread_pool, PyFelixThreadPool):
+        py_pool_obj = <PyFelixThreadPool>thread_pool
 
     try:
         if num_experiments == 1:
@@ -580,6 +645,22 @@ def simulate_point_sensors(
                 <double *>errs_rand.data,
                 <double *>errs_total.data,
             )
+        elif py_pool_obj is not None and py_pool_obj.pool_ptr != NULL:
+            with nogil:
+                status = cf.felixRunExperimentSimulationWithPool(
+                    py_pool_obj.pool_ptr,
+                    &mesh_in,
+                    &sensor_in,
+                    error_specs_ptr,
+                    num_errors,
+                    <double *>truth.data,
+                    <double *>meas.data,
+                    <double *>errs_total.data,
+                    num_experiments,
+                    experiment_seed,
+                    seed_stride,
+                    grain_size,
+                )
         else:
             with nogil:
                 status = cf.felixRunExperimentSimulationParallel(

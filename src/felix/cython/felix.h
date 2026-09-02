@@ -283,6 +283,24 @@ int felixTransformTensorArray3D(
     double       *out_derived_ptr
 );
 
+void *felixCreateThreadPool(uint16_t workers_num);
+void felixDestroyThreadPool(void *pool_ptr);
+
+int felixRunExperimentSimulationWithPool(
+    void                    *pool_ptr,
+    const SimMeshInput      *mesh_in_ptr,
+    const SensorArrayInput  *sensor_in_ptr,
+    const ErrorSpec         *error_specs_ptr,
+    size_t                   num_errors,
+    double                  *out_truth_all_ptr,
+    double                  *out_meas_all_ptr,
+    double                  *out_errs_total_all_ptr,
+    size_t                   num_experiments,
+    uint64_t                 base_seed,
+    uint64_t                 seed_stride,
+    size_t                   grain_size
+);
+
 int felixRunExperimentSimulationParallel(
     const SimMeshInput      *mesh_in_ptr,
     const SensorArrayInput  *sensor_in_ptr,

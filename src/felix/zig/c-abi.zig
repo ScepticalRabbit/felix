@@ -549,6 +549,65 @@ pub export fn felixTransformTensorArray3D(
     return 0;
 }
 
+pub export fn felixCreateThreadPool(workers_num: u16) ?*anyopaque {
+    const pool = std.heap.c_allocator.create(exp_sim.FelixThreadPool) catch |err| {
+        setLastError(err);
+        return null;
+    };
+    pool.* = exp_sim.FelixThreadPool.init(std.heap.c_allocator, workers_num);
+    return @ptrCast(pool);
+}
+
+pub export fn felixDestroyThreadPool(pool_ptr: ?*anyopaque) void {
+    if (pool_ptr) |raw_ptr| {
+        const pool: *exp_sim.FelixThreadPool = @ptrCast(@alignCast(raw_ptr));
+        pool.deinit();
+        std.heap.c_allocator.destroy(pool);
+    }
+}
+
+pub export fn felixRunExperimentSimulationWithPool(
+    pool_ptr: ?*anyopaque,
+    mesh_in: [*c]const sensor_sim.SimMeshInput,
+    sensor_in: [*c]const sensor_sim.SensorArrayInput,
+    error_specs_ptr: [*c]const sensor_sim.ErrorSpec,
+    num_errors: usize,
+    out_truth_all: [*c]F,
+    out_meas_all: [*c]F,
+    out_errs_total_all: [*c]F,
+    num_experiments: usize,
+    base_seed: u64,
+    seed_stride: u64,
+    grain_size: usize,
+) i32 {
+    if (pool_ptr == null or mesh_in == null or sensor_in == null or
+        out_truth_all == null or out_meas_all == null)
+    {
+        setLastErrorSlice(
+            "Null pointer passed to felixRunExperimentSimulationWithPool",
+        );
+        return -1;
+    }
+    const pool: *exp_sim.FelixThreadPool = @ptrCast(@alignCast(pool_ptr.?));
+    pool.runExperimentSimulation(
+        mesh_in,
+        sensor_in,
+        error_specs_ptr,
+        num_errors,
+        out_truth_all,
+        out_meas_all,
+        out_errs_total_all,
+        num_experiments,
+        base_seed,
+        seed_stride,
+        grain_size,
+    ) catch |err| {
+        setLastError(err);
+        return -1;
+    };
+    return 0;
+}
+
 pub export fn felixRunExperimentSimulationParallel(
     mesh_in: [*c]const sensor_sim.SimMeshInput,
     sensor_in: [*c]const sensor_sim.SensorArrayInput,

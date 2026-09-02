@@ -46,7 +46,7 @@ class ExpSimOpts:
 class ExperimentSimulator:
     """Thin multi-configuration wrapper over Zig experiment batches."""
 
-    __slots__ = ("_sims", "_sensors", "_opts", "_results")
+    __slots__ = ("_sims", "_sensors", "_opts", "_results", "_pool")
 
     def __init__(
         self,
@@ -65,6 +65,18 @@ class ExperimentSimulator:
         if save_keys is not None:
             self._opts.save_keys = save_keys
         self._results = None
+
+        threads = (
+            self._opts.num_threads
+            if self._opts.num_threads != 1
+            else self._opts.workers
+        )
+        if threads > 1 or threads == 0:
+            from felix.cython.felix import PyFelixThreadPool
+
+            self._pool = PyFelixThreadPool(threads)
+        else:
+            self._pool = None
 
     def run_experiments(
         self,
@@ -87,6 +99,7 @@ class ExperimentSimulator:
                         num_threads=threads,
                         seed_stride=self._opts.seed_stride,
                         grain_size=self._opts.grain_size,
+                        thread_pool=self._pool,
                     )
                 )
                 keys = self._opts.save_keys

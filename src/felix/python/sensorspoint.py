@@ -322,6 +322,10 @@ class SensorsPoint:
         num_threads: int = 1,
         seed_stride: int = 1000,
         grain_size: int = 1,
+        thread_pool: object | None = None,
+        out_truth: np.ndarray | None = None,
+        out_meas: np.ndarray | None = None,
+        out_errs_total: np.ndarray | None = None,
     ) -> tuple[np.ndarray, ...]:
         if self._sensor_data.positions is None:
             raise ValueError("SensorData.positions must be provided")
@@ -356,6 +360,10 @@ class SensorsPoint:
             num_threads=num_threads,
             seed_stride=seed_stride,
             grain_size=grain_size,
+            thread_pool=thread_pool,
+            out_truth=out_truth,
+            out_meas=out_meas,
+            out_errs_total=out_errs_total,
         )
 
     def _simulate(self, specs: list[dict] | None) -> tuple[np.ndarray, ...]:
